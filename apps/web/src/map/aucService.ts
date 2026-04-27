@@ -7,17 +7,26 @@
 //   Sortie : { features: [{attributes, geometry: {rings}}], spatialReference: {wkid: 102100} }
 //
 // IDs des calques à confirmer/compléter au fur et à mesure de l'inspection
-// du géoportail. Mettre à jour ce fichier sans toucher au reste du code.
+// du géoportail. Layer-579748 est CONFIRMÉ comme étant le calque "Équipements
+// & espaces publics" (attribut `nature`). Le Layer-ID du calque ZONAGE (avec
+// attributs `zone` et `secteur`) est inconnu côté code — il peut être défini
+// par l'utilisateur via localStorage.aucZonageLayerId, sinon on tombe sur le
+// même ID que les équipements (ce qui est faux mais évite un crash).
+const STORAGE_KEY = "auc-zonage-layer-id";
+
+function readLayerOverride(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem(STORAGE_KEY);
+}
+
+export function setZonageLayerId(id: string): void {
+  if (typeof localStorage === "undefined") return;
+  if (id) localStorage.setItem(STORAGE_KEY, id);
+  else localStorage.removeItem(STORAGE_KEY);
+}
+
 export const AUC_LAYERS = {
-  /**
-   * Zonage du PAU — features avec attributs `zone` ("ZONE A", "ZONE B"...)
-   * et `secteur` ("A6", "B4", "E3"...). Aligné sur data/reglement/pau-zones.json.
-   */
-  zonage: "Layer-579748",
-  /**
-   * Équipements & espaces publics — attribut `nature` (EQUIPEMENT DE SANTE,
-   * EQUIPEMENT ENSEIGNEMENT, ESPACE VERT, PARKING, CIMETIERE…).
-   */
+  zonage: readLayerOverride() ?? "Layer-579748",
   equipements: "Layer-579748",
 } as const;
 
@@ -101,11 +110,14 @@ function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
   return `${API_ROOT}?${params.toString()}`;
 }
 
-// Inverse Mercator sphérique — converti EPSG:3857 → EPSG:4326.
-// Utile parce que karazal renvoie les rings en Web Mercator même quand
-// on demande outSR=4326 (paramètre ignoré côté serveur).
+// Reprojection EPSG:3857 → EPSG:4326 (Mercator sphérique inverse).
+// Détection par magnitude des coordonnées : si |x| > 1000, on est en mètres
+// (Web Mercator), sinon on est déjà en degrés. Le serveur karazal déclare
+// systématiquement spatialReference.wkid=102100 même quand il renvoie en
+// 4326 → on ne peut pas se fier à cette annonce.
 const R_EARTH = 6378137;
 const RAD_TO_DEG = 180 / Math.PI;
+const MERC_THRESHOLD = 1000;
 
 function mercToWgs84([x, y]: [number, number]): [number, number] {
   const lng = (x / R_EARTH) * RAD_TO_DEG;
@@ -113,17 +125,22 @@ function mercToWgs84([x, y]: [number, number]): [number, number] {
   return [lng, lat];
 }
 
-function isWebMercator(sr?: { wkid?: number; latestWkid?: number }): boolean {
-  if (!sr) return false;
-  const code = sr.latestWkid ?? sr.wkid;
-  return code === 3857 || code === 102100;
+function looksMercator(rings: number[][][]): boolean {
+  for (const ring of rings) {
+    for (const p of ring) {
+      const x = p[0];
+      if (typeof x === "number" && Math.abs(x) > MERC_THRESHOLD) return true;
+      return false; // 1er point examiné suffit
+    }
+  }
+  return false;
 }
 
 function ringsToPolygon(
   rings: number[][][],
-  reprojectFromMerc: boolean,
 ): GeoJSON.Polygon | GeoJSON.MultiPolygon {
-  const project = reprojectFromMerc
+  const reproject = looksMercator(rings);
+  const project = reproject
     ? (ring: number[][]) => ring.map((p) => mercToWgs84([p[0]!, p[1]!]))
     : (ring: number[][]) => ring.map((p) => [p[0]!, p[1]!] as [number, number]);
   if (rings.length === 1) {
@@ -174,7 +191,6 @@ function esriToGeojson<A>(
   data: EsriResponse,
   layerKey: AucLayer,
 ): GeoJSON.FeatureCollection {
-  const reproject = isWebMercator(data.spatialReference);
   const features: GeoJSON.Feature[] = [];
   for (const f of data.features ?? []) {
     const rings = f.geometry?.rings;
@@ -183,7 +199,7 @@ function esriToGeojson<A>(
     features.push({
       type: "Feature",
       properties: { ...(f.attributes as A), aucId: id, aucLayer: layerKey },
-      geometry: ringsToPolygon(rings, reproject),
+      geometry: ringsToPolygon(rings),
     });
   }
   return { type: "FeatureCollection", features };
