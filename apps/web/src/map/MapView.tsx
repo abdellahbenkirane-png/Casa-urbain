@@ -74,21 +74,67 @@ export function MapView({ onParcelSelect }: Props) {
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-    map.on("load", () => {
+    map.on("load", async () => {
       try {
-        map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
-
-        const bounds = new maplibregl.LngLatBounds();
-        for (const f of PARCELLES_DATA.features) {
-          const g = f.geometry as GeoJSON.Polygon | undefined;
-          const coords = g?.coordinates?.[0];
-          if (Array.isArray(coords)) {
-            for (const [lng, lat] of coords) bounds.extend([lng, lat]);
+        // 1. Périmètre administratif d'Aïn Chock (OSM)
+        try {
+          const perim = await fetch("/data/ainchock/perimetre.geojson").then((r) =>
+            r.ok ? r.json() : null,
+          );
+          if (perim) {
+            map.addSource("perimetre", { type: "geojson", data: perim });
+            map.addLayer({
+              id: "perimetre-line",
+              type: "line",
+              source: "perimetre",
+              paint: { "line-color": "#2f81f7", "line-width": 2, "line-dasharray": [3, 2] },
+            });
+            const bounds = new maplibregl.LngLatBounds();
+            for (const f of perim.features ?? []) {
+              const geom = f.geometry;
+              const polys =
+                geom.type === "Polygon"
+                  ? [geom.coordinates]
+                  : geom.type === "MultiPolygon"
+                    ? geom.coordinates
+                    : [];
+              for (const poly of polys)
+                for (const ring of poly) for (const [lng, lat] of ring) bounds.extend([lng, lat]);
+            }
+            if (!bounds.isEmpty()) {
+              map.fitBounds(bounds, { padding: 30, duration: 0 });
+            }
           }
+        } catch (e) {
+          console.warn("[MapView] périmètre indisponible", e);
         }
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds, { padding: 80, maxZoom: 17, duration: 0 });
+
+        // 2. Bâtiments OSM (calque informatif, non cliquable)
+        try {
+          const buildings = await fetch("/data/ainchock/buildings.geojson").then((r) =>
+            r.ok ? r.json() : null,
+          );
+          if (buildings) {
+            map.addSource("buildings", { type: "geojson", data: buildings });
+            map.addLayer({
+              id: "buildings-fill",
+              type: "fill",
+              source: "buildings",
+              paint: { "fill-color": "#8b949e", "fill-opacity": 0.35 },
+            });
+            map.addLayer({
+              id: "buildings-outline",
+              type: "line",
+              source: "buildings",
+              paint: { "line-color": "#30363d", "line-width": 0.5 },
+            });
+          }
+        } catch (e) {
+          console.warn("[MapView] bâtiments indisponibles", e);
         }
+
+        // 3. Parcelles de démo (cliquables, par-dessus tout le reste)
+        map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
 
         const matchExpr: maplibregl.ExpressionSpecification = [
           "match",
@@ -104,13 +150,13 @@ export function MapView({ onParcelSelect }: Props) {
           id: "parcelles-fill",
           type: "fill",
           source: "parcelles",
-          paint: { "fill-color": matchExpr, "fill-opacity": 0.45 },
+          paint: { "fill-color": matchExpr, "fill-opacity": 0.7 },
         });
         map.addLayer({
           id: "parcelles-outline",
           type: "line",
           source: "parcelles",
-          paint: { "line-color": "#fff", "line-width": 1.5 },
+          paint: { "line-color": "#fff", "line-width": 2 },
         });
 
         map.on("click", "parcelles-fill", (e) => {
