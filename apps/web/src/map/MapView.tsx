@@ -30,6 +30,8 @@ export function MapView({ onParcelSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [planche, setPlanche] = useState(false);
+  const [plancheOpacity, setPlancheOpacity] = useState(0.65);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -76,6 +78,28 @@ export function MapView({ onParcelSelect }: Props) {
 
     map.on("load", async () => {
       try {
+        // 0. Planche PAU d'Aïn Chock — overlay raster (approx. cadré sur le périmètre)
+        // L'image est en portrait alors que le périmètre administratif OSM est en
+        // paysage : on accepte un léger étirement, c'est volontaire pour qu'elle
+        // recouvre approximativement la zone. Géoréférencement précis = future itération.
+        const W = -7.6730, E = -7.5660, S = 33.4685, N = 33.5843;
+        map.addSource("planche", {
+          type: "image",
+          url: "/data/ainchock/pau-planche.jpg",
+          coordinates: [
+            [W, N], // top-left
+            [E, N], // top-right
+            [E, S], // bottom-right
+            [W, S], // bottom-left
+          ],
+        });
+        map.addLayer({
+          id: "planche-layer",
+          type: "raster",
+          source: "planche",
+          paint: { "raster-opacity": 0, "raster-fade-duration": 0 },
+        });
+
         // 1. Périmètre administratif d'Aïn Chock (OSM)
         try {
           const perim = await fetch("/data/ainchock/perimetre.geojson").then((r) =>
@@ -188,9 +212,38 @@ export function MapView({ onParcelSelect }: Props) {
     };
   }, [onParcelSelect]);
 
+  // Synchronise l'opacité du calque planche avec l'état React
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("planche-layer")) return;
+    const op = planche ? plancheOpacity : 0;
+    map.setPaintProperty("planche-layer", "raster-opacity", op);
+  }, [planche, plancheOpacity]);
+
   return (
     <>
       <div ref={containerRef} className="map" />
+      <div className="map-toolbar">
+        <label className="map-toolbar-toggle">
+          <input
+            type="checkbox"
+            checked={planche}
+            onChange={(e) => setPlanche(e.target.checked)}
+          />
+          <span>Planche PAU</span>
+        </label>
+        {planche && (
+          <input
+            type="range"
+            min={0.2}
+            max={1}
+            step={0.05}
+            value={plancheOpacity}
+            onChange={(e) => setPlancheOpacity(Number(e.target.value))}
+            title="Opacité de la planche"
+          />
+        )}
+      </div>
       {error && <div className="map-error">⚠ {error}</div>}
     </>
   );
