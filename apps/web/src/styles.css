@@ -19,10 +19,12 @@ body { background: var(--bg); color: var(--text); }
 .layout {
   display: grid;
   grid-template-columns: 1fr 480px;
+  grid-template-rows: 100vh;
   height: 100vh;
+  overflow: hidden;
 }
 
-.map-container { position: relative; }
+.map-container { position: relative; height: 100%; min-height: 0; }
 .map { position: absolute; inset: 0; }
 
 .header {
