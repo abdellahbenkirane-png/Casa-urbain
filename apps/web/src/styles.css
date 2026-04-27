@@ -17,15 +17,20 @@ html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); }
 
 .layout {
-  display: grid;
-  grid-template-columns: 1fr 480px;
-  grid-template-rows: 100vh;
+  display: flex;
+  width: 100vw;
   height: 100vh;
   overflow: hidden;
 }
 
-.map-container { position: relative; height: 100%; min-height: 0; }
-.map { position: absolute; inset: 0; }
+.map-container {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+.map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 .map-error,
 .map-diag {
@@ -70,6 +75,9 @@ body { background: var(--bg); color: var(--text); }
   border-left: 1px solid var(--border);
   overflow-y: auto;
   padding: 20px;
+  flex: 0 0 480px;
+  width: 480px;
+  height: 100%;
 }
 
 .panel-empty {
