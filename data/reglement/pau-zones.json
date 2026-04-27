@@ -1,88 +1,384 @@
 {
   "_meta": {
-    "source": "Plan d'Aménagement Unifié de Casablanca — à confirmer auprès de l'Agence Urbaine. Valeurs ci-dessous : ordres de grandeur indicatifs pour le MVP, à remplacer par le règlement officiel par zone homogène.",
-    "version": "MVP-stub-0.1"
+    "source": "Plan d'Aménagement de l'Arrondissement d'Aïn Chock — Agence Urbaine de Casablanca, homologué 2025. Règlement extrait des fiches officielles (ZONE-A à ZONE-ZR + RG-39).",
+    "version": "PAU-AIN-CHOCK-HOMOLOGUE-2025",
+    "extracted": "2026-04-27"
   },
   "zones": {
-    "SD1": {
-      "code": "SD1",
-      "nom": "Secteur Diffus 1 — habitat continu R+4",
-      "description": "Zone d'habitat continu, immeubles collectifs, RDC commerce admis. Hauteur dominante R+4 + retrait.",
-      "usagesAutorises": ["habitat", "commerce RDC", "bureaux", "équipements de proximité"],
-      "usagesInterdits": ["industrie", "entrepôts"],
+    "A6": {
+      "code": "A6",
+      "famille": "A",
+      "nom": "Zone A6 — habitat collectif haute densité",
+      "description": "Zone de logement à densité ≥ 500 log/ha avec création de commerces, bureaux et équipements hôteliers encouragée. Mixité sociale obligatoire (70 % du programme), petites unités < 100 m².",
+      "usagesAutorises": ["habitat collectif", "commerce", "bureaux", "équipements hôteliers"],
+      "usagesInterdits": [
+        "industrie 1ère/2ème/3ème catégorie",
+        "entrepôts/dépôts > 300 m²",
+        "campings/caravanages",
+        "carrières"
+      ],
       "parametres": {
-        "cos": 1.8,
-        "cus": 2.5,
-        "hauteurMaxM": 16,
-        "nombreEtagesMax": 5,
-        "retraitFacadeM": 0,
-        "retraitFondM": 3,
-        "emprisAuSolMaxPct": 0.7
-      }
+        "cos": null,
+        "cus": null,
+        "hauteurMaxM": 23.5,
+        "nombreEtagesMax": 6,
+        "hauteurHotelBureauM": 30,
+        "etagesHotelBureau": 8,
+        "surfaceMinParcelleM2": 400,
+        "facadeMinM": 18,
+        "linealFacadeMinPct": 0.05,
+        "mixiteSocialePct": 0.7,
+        "fichePdf": "/data/ainchock/reglement/zone-a-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-a-p1.jpg", "/data/ainchock/reglement/zone-a-p2.jpg"]
     },
-    "SD2": {
-      "code": "SD2",
-      "nom": "Secteur Diffus 2 — habitat continu R+3",
-      "description": "Habitat collectif, gabarit R+3 dominant.",
-      "usagesAutorises": ["habitat", "commerce RDC", "équipements"],
-      "usagesInterdits": ["industrie"],
+    "B3": {
+      "code": "B3",
+      "famille": "B",
+      "nom": "Zone B3 — collectif R+3",
+      "description": "Habitat collectif densité ≥ 500 log/ha, commerce/hôtellerie/bureaux. Mixité sociale 70 %, petites unités < 100 m².",
+      "usagesAutorises": ["habitat collectif", "commerce", "bureaux", "hôtellerie", "équipements"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "campings", "carrières"],
       "parametres": {
-        "cos": 1.5,
-        "cus": 2,
-        "hauteurMaxM": 13,
+        "cos": 1.2,
+        "cus": 0.35,
+        "hauteurMaxM": 14.5,
+        "nombreEtagesMax": 3,
+        "surfaceMinParcelleM2": 250,
+        "facadeMinM": 12,
+        "mixiteSocialePct": 0.7,
+        "fichePdf": "/data/ainchock/reglement/zone-b-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-b-p1.jpg", "/data/ainchock/reglement/zone-b-p2.jpg", "/data/ainchock/reglement/zone-b-p3.jpg"]
+    },
+    "B3a": {
+      "code": "B3a",
+      "famille": "B",
+      "nom": "Zone B3a — collectif R+3 (variante)",
+      "description": "Idem B3 mais avec ratios COS/CUS spécifiques.",
+      "usagesAutorises": ["habitat collectif", "commerce", "bureaux", "hôtellerie"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "campings"],
+      "parametres": {
+        "cos": 1.3,
+        "cus": 0.3,
+        "hauteurMaxM": 14.5,
+        "nombreEtagesMax": 3,
+        "surfaceMinParcelleM2": 250,
+        "facadeMinM": 12,
+        "fichePdf": "/data/ainchock/reglement/zone-b-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-b-p1.jpg", "/data/ainchock/reglement/zone-b-p2.jpg", "/data/ainchock/reglement/zone-b-p3.jpg"]
+    },
+    "B4": {
+      "code": "B4",
+      "famille": "B",
+      "nom": "Zone B4 — collectif R+4",
+      "description": "Habitat collectif densité ≥ 500 log/ha, R+4.",
+      "usagesAutorises": ["habitat collectif", "commerce", "bureaux", "hôtellerie"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "campings"],
+      "parametres": {
+        "cos": 1.3,
+        "cus": 0.3,
+        "hauteurMaxM": 17.5,
         "nombreEtagesMax": 4,
-        "retraitFacadeM": 0,
-        "retraitFondM": 3,
-        "emprisAuSolMaxPct": 0.7
-      }
+        "surfaceMinParcelleM2": 300,
+        "facadeMinM": 12,
+        "fichePdf": "/data/ainchock/reglement/zone-b-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-b-p1.jpg", "/data/ainchock/reglement/zone-b-p2.jpg", "/data/ainchock/reglement/zone-b-p3.jpg"]
     },
-    "ZH": {
-      "code": "ZH",
-      "nom": "Zone d'Habitat individuel",
-      "description": "Villas et habitat individuel, gabarit R+1 ou R+2.",
-      "usagesAutorises": ["habitat individuel"],
-      "usagesInterdits": ["commerce", "industrie", "habitat collectif"],
+    "B5": {
+      "code": "B5",
+      "famille": "B",
+      "nom": "Zone B5 — collectif R+5",
+      "description": "Habitat collectif densité ≥ 500 log/ha, R+5.",
+      "usagesAutorises": ["habitat collectif", "commerce", "bureaux", "hôtellerie"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "campings"],
       "parametres": {
-        "cos": 0.6,
-        "cus": 1,
-        "hauteurMaxM": 8.5,
-        "nombreEtagesMax": 2,
-        "retraitFacadeM": 4,
-        "retraitFondM": 4,
-        "emprisAuSolMaxPct": 0.5
-      }
+        "cos": 1.4,
+        "cus": 0.25,
+        "hauteurMaxM": 20.5,
+        "nombreEtagesMax": 5,
+        "surfaceMinParcelleM2": 300,
+        "facadeMinM": 12,
+        "fichePdf": "/data/ainchock/reglement/zone-b-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-b-p1.jpg", "/data/ainchock/reglement/zone-b-p2.jpg", "/data/ainchock/reglement/zone-b-p3.jpg"]
     },
-    "ZE": {
-      "code": "ZE",
-      "nom": "Zone d'Équipement",
-      "description": "Réservée aux équipements publics : écoles, hôpitaux, administrations.",
-      "usagesAutorises": ["équipements publics"],
-      "usagesInterdits": ["habitat", "commerce", "industrie"],
+    "C3": {
+      "code": "C3",
+      "famille": "C",
+      "nom": "Zone C3 — collectif sur cours d'îlots",
+      "description": "Logements collectifs sur cours d'îlots/espaces communs. Activités commerciales de proximité, bureaux, équipements hôteliers possibles.",
+      "usagesAutorises": ["habitat collectif", "commerce de proximité", "bureaux", "équipements"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "campings"],
       "parametres": {
         "cos": 1,
-        "cus": 1.5,
-        "hauteurMaxM": 13,
-        "nombreEtagesMax": 4,
-        "retraitFacadeM": 5,
-        "retraitFondM": 5,
-        "emprisAuSolMaxPct": 0.6
-      }
+        "hauteurMaxM": 14.5,
+        "nombreEtagesMax": 3,
+        "surfaceMinParcelleM2": 250,
+        "facadeMinM": 12,
+        "mixiteSocialePct": 0.7,
+        "fichePdf": "/data/ainchock/reglement/zone-c-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-c-p1.jpg", "/data/ainchock/reglement/zone-c-p2.jpg", "/data/ainchock/reglement/zone-c-p3.jpg"]
     },
-    "ZI": {
-      "code": "ZI",
-      "nom": "Zone Industrielle",
-      "description": "Activités industrielles et logistiques.",
-      "usagesAutorises": ["industrie", "logistique", "entrepôts"],
-      "usagesInterdits": ["habitat"],
+    "C4": {
+      "code": "C4",
+      "famille": "C",
+      "nom": "Zone C4 — collectif R+4 sur cours d'îlots",
+      "description": "Variante R+4 de la zone C.",
+      "usagesAutorises": ["habitat collectif", "commerce", "bureaux", "équipements"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²"],
       "parametres": {
-        "cos": 0.8,
-        "cus": 1,
-        "hauteurMaxM": 12,
-        "nombreEtagesMax": 2,
-        "retraitFacadeM": 6,
-        "retraitFondM": 6,
-        "emprisAuSolMaxPct": 0.6
-      }
+        "cos": 1.2,
+        "hauteurMaxM": 17.5,
+        "nombreEtagesMax": 4,
+        "surfaceMinParcelleM2": 250,
+        "facadeMinM": 12,
+        "fichePdf": "/data/ainchock/reglement/zone-c-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-c-p1.jpg", "/data/ainchock/reglement/zone-c-p2.jpg", "/data/ainchock/reglement/zone-c-p3.jpg"]
+    },
+    "D1": {
+      "code": "D1",
+      "famille": "D",
+      "nom": "Zone D1 — villas en bande",
+      "description": "Habitat individuel : villas en bande, jumelées ou en villégiature. Faible coefficient d'emprise.",
+      "usagesAutorises": ["habitat individuel", "petits commerces", "professions libérales"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "habitat collectif"],
+      "parametres": {
+        "cus": 0.5,
+        "surfaceMinParcelleM2": 200,
+        "facadeMinM": 10,
+        "designation": "Villas en bande",
+        "fichePdf": "/data/ainchock/reglement/zone-d-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-d-p1.jpg", "/data/ainchock/reglement/zone-d-p2.jpg"]
+    },
+    "D1s2": {
+      "code": "D1s2",
+      "famille": "D",
+      "nom": "Zone D1 secteur 2 — villas isolées",
+      "description": "Villas isolées, secteur intermédiaire.",
+      "usagesAutorises": ["habitat individuel", "petits commerces"],
+      "usagesInterdits": ["industrie", "habitat collectif"],
+      "parametres": {
+        "cus": 0.4,
+        "surfaceMinParcelleM2": 300,
+        "facadeMinM": 12,
+        "designation": "Villas isolées",
+        "fichePdf": "/data/ainchock/reglement/zone-d-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-d-p1.jpg", "/data/ainchock/reglement/zone-d-p2.jpg"]
+    },
+    "D3": {
+      "code": "D3",
+      "famille": "D",
+      "nom": "Zone D3 — villas isolées",
+      "description": "Habitat individuel à faible densité.",
+      "usagesAutorises": ["habitat individuel"],
+      "usagesInterdits": ["industrie", "habitat collectif", "commerce non lié à l'habitat"],
+      "parametres": {
+        "cus": 0.3,
+        "surfaceMinParcelleM2": 500,
+        "facadeMinM": 15,
+        "designation": "Villas isolées",
+        "fichePdf": "/data/ainchock/reglement/zone-d-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-d-p1.jpg", "/data/ainchock/reglement/zone-d-p2.jpg"]
+    },
+    "D4": {
+      "code": "D4",
+      "famille": "D",
+      "nom": "Zone D4 — villas isolées grands terrains",
+      "description": "Habitat individuel sur très grandes parcelles.",
+      "usagesAutorises": ["habitat individuel"],
+      "usagesInterdits": ["industrie", "habitat collectif", "commerce"],
+      "parametres": {
+        "cus": 0.25,
+        "surfaceMinParcelleM2": 1000,
+        "facadeMinM": 25,
+        "designation": "Villas isolées grands terrains",
+        "fichePdf": "/data/ainchock/reglement/zone-d-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-d-p1.jpg", "/data/ainchock/reglement/zone-d-p2.jpg"]
+    },
+    "E2": {
+      "code": "E2",
+      "famille": "E",
+      "nom": "Zone E2 — secteur existant R+1",
+      "description": "Zone urbaine mixte sur secteur existant : logement, commerce, artisanat, bureaux, équipements de proximité. Densité ≥ 500 log/ha.",
+      "usagesAutorises": ["habitat", "commerce", "bureaux", "artisanat", "équipements"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "campings"],
+      "parametres": {
+        "cus": 0.84,
+        "surfaceMinParcelleM2": 100,
+        "facadeMinM": 8,
+        "fichePdf": "/data/ainchock/reglement/zone-e-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-e-p1.jpg", "/data/ainchock/reglement/zone-e-p2.jpg", "/data/ainchock/reglement/zone-e-p3.jpg"]
+    },
+    "E3": {
+      "code": "E3",
+      "famille": "E",
+      "nom": "Zone E3 — secteur existant R+2/R+3",
+      "description": "Variante densité moyenne du secteur existant.",
+      "usagesAutorises": ["habitat", "commerce", "bureaux", "artisanat"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²"],
+      "parametres": {
+        "cus": 0.8,
+        "surfaceMinParcelleM2": 100,
+        "facadeMinM": 8,
+        "fichePdf": "/data/ainchock/reglement/zone-e-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-e-p1.jpg", "/data/ainchock/reglement/zone-e-p2.jpg", "/data/ainchock/reglement/zone-e-p3.jpg"]
+    },
+    "E4": {
+      "code": "E4",
+      "famille": "E",
+      "nom": "Zone E4 — secteur existant grand terrain",
+      "description": "Variante du secteur existant sur grandes parcelles.",
+      "usagesAutorises": ["habitat", "commerce RDC", "bureaux"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²"],
+      "parametres": {
+        "cos": 1.5,
+        "cus": 0.35,
+        "surfaceMinParcelleM2": 500,
+        "facadeMinM": 10,
+        "fichePdf": "/data/ainchock/reglement/zone-e-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-e-p1.jpg", "/data/ainchock/reglement/zone-e-p2.jpg", "/data/ainchock/reglement/zone-e-p3.jpg"]
+    },
+    "I2s1": {
+      "code": "I2s1",
+      "famille": "I",
+      "nom": "Zone I2s1 — activités industrielles 2ème/3ème catégorie",
+      "description": "Zone d'activités économiques : industrie, artisanat, tertiaire, commerce, équipements de l'hôtellerie. Logements de fonction admis sous conditions.",
+      "usagesAutorises": ["industrie 2ème/3ème catégorie", "logistique", "entrepôts", "tertiaire"],
+      "usagesInterdits": ["industrie 1ère catégorie", "habitat principal", "campings"],
+      "parametres": {
+        "surfaceMinParcelleM2": 500,
+        "facadeMinM": 20,
+        "fichePdf": "/data/ainchock/reglement/zone-i-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-i-p1.jpg", "/data/ainchock/reglement/zone-i-p2.jpg", "/data/ainchock/reglement/zone-i-p3.jpg"]
+    },
+    "I3": {
+      "code": "I3",
+      "famille": "I",
+      "nom": "Zone I3 — activités tertiaires/commerciales",
+      "description": "Activités tertiaires, commerciales, équipements de proximité.",
+      "usagesAutorises": ["tertiaire", "commerce", "bureaux", "équipements"],
+      "usagesInterdits": ["industrie 1ère catégorie", "habitat principal"],
+      "parametres": {
+        "cos": 0.6,
+        "surfaceMinParcelleM2": 300,
+        "facadeMinM": 12,
+        "fichePdf": "/data/ainchock/reglement/zone-i-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-i-p1.jpg", "/data/ainchock/reglement/zone-i-p2.jpg", "/data/ainchock/reglement/zone-i-p3.jpg"]
+    },
+    "I5": {
+      "code": "I5",
+      "famille": "I",
+      "nom": "Zone I5 — activités tertiaires sur grandes parcelles",
+      "description": "Tertiaire, commerce, équipements sur lotissements.",
+      "usagesAutorises": ["tertiaire", "commerce", "équipements"],
+      "usagesInterdits": ["industrie", "habitat"],
+      "parametres": {
+        "cos": 0.5,
+        "surfaceMinParcelleM2": 1000,
+        "facadeMinM": 30,
+        "fichePdf": "/data/ainchock/reglement/zone-i-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-i-p1.jpg", "/data/ainchock/reglement/zone-i-p2.jpg", "/data/ainchock/reglement/zone-i-p3.jpg"]
+    },
+    "PB": {
+      "code": "PB",
+      "famille": "PB",
+      "nom": "Zone PB — bande verte de transition",
+      "description": "Bande verte assurant la couture, la transition entre l'espace bâti et l'espace naturel ou de pénétration de la ville. Constructibilité limitée et conditionnée à la création d'aménagements paysagers, espaces verts, jardins.",
+      "usagesAutorises": ["habitat", "commerce", "tertiaire", "bureaux", "équipements hôteliers", "équipements"],
+      "usagesInterdits": ["industrie", "entrepôts > 300 m²", "carrières"],
+      "parametres": {
+        "cos": 1.3,
+        "cus": null,
+        "surfaceMinParcelleM2": 300,
+        "facadeMinM": 12,
+        "fichePdf": "/data/ainchock/reglement/zone-pb-p1.jpg"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-pb-p1.jpg", "/data/ainchock/reglement/zone-pb-p2.jpg"]
+    },
+    "PU1": {
+      "code": "PU1",
+      "famille": "PU",
+      "nom": "Projet Urbain PU1 — nœud A / sortie autoroute",
+      "description": "Projet urbain à initier en partie par la réalisation de projets urbains intégrés. Site stratégique au front du nœud A et sortie autoroute, prolongement de la route nationale 11. Programme à définir et préciser dans cahier de charges après validation de la commission préfectorale citée à l'article 19. Loi 12.90 applicable.",
+      "usagesAutorises": ["projet urbain intégré (programme à définir)"],
+      "usagesInterdits": ["construction hors projet validé"],
+      "parametres": {
+        "fichePdf": "/data/ainchock/reglement/zone-pu-p1.jpg",
+        "remarque": "Pas de paramètres standards — règles spécifiques par cahier de charges"
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-pu-p1.jpg"]
+    },
+    "PU2": {
+      "code": "PU2",
+      "famille": "PU",
+      "nom": "Projet Urbain PU2 — Club Kahrama",
+      "description": "Site investi par un projet urbain intégré sur 14 ha (club Kahrama). Programme intégré : centrale urbaine d'aménagements verts/paysagers à l'aire libre. Aucune construction sur les sites tolérées. Tous les aménagements devront être de structure légère et installations existantes liées aux locaux techniques.",
+      "usagesAutorises": ["projet urbain intégré sur cahier de charges"],
+      "usagesInterdits": ["construction hors projet"],
+      "parametres": {
+        "fichePdf": "/data/ainchock/reglement/zone-pu-p1.jpg",
+        "surface_ha": 14
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-pu-p1.jpg"]
+    },
+    "PU3": {
+      "code": "PU3",
+      "famille": "PU",
+      "nom": "Projet Urbain PU3 — SNRT (radio-télévision)",
+      "description": "Site nationale de la radio-télévision (SNRT) — étalant sur 9 ha. Site avec patrimoine bâti existant (visible dans PATRIMOINE). Programme : projet urbain intégré conservant le patrimoine identifié. Cahier de charges spécifique.",
+      "usagesAutorises": ["projet urbain intégré", "conservation patrimoine"],
+      "usagesInterdits": ["démolition patrimoine"],
+      "parametres": {
+        "fichePdf": "/data/ainchock/reglement/zone-pu-p1.jpg",
+        "surface_ha": 9
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-pu-p1.jpg"]
+    },
+    "S4": {
+      "code": "S4",
+      "famille": "S",
+      "nom": "Zone S4 — protection habitat traditionnel",
+      "description": "Habitat traditionnel et artisanat. Ensemble urbain remarquable : règles ou principes singuliers à conserver. Charte architecturale, urbaine et paysagère définit les espaces bâtis et non bâtis. Permis de construire/démolir soumis à l'annexe 4 du règlement.",
+      "usagesAutorises": ["habitat traditionnel", "artisanat", "petit commerce de proximité"],
+      "usagesInterdits": ["industrie classée", "entrepôts > 500 m²", "carrières"],
+      "parametres": {
+        "cos": null,
+        "cus": null,
+        "surfaceMinParcelleM2": null,
+        "hauteurMaxM": 8,
+        "nombreEtagesMax": 1,
+        "fichePdf": "/data/ainchock/reglement/zone-s-p1.jpg",
+        "remarque": "Construction possible jusqu'aux limites mitoyennes. Charte architecturale annexée."
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-s-p1.jpg"]
+    },
+    "ZR": {
+      "code": "ZR",
+      "famille": "ZR",
+      "nom": "Zone de Restructuration",
+      "description": "Zone en partie couverte par des constructions existantes, à restructurer sur la base d'un plan de détail (loi 25-90). Construction/lotissement autorisés uniquement après approbation du projet de restructuration. En cas de changement, le zonage limitrophe s'applique.",
+      "usagesAutorises": ["selon plan de restructuration validé"],
+      "usagesInterdits": ["construction sans plan validé"],
+      "parametres": {
+        "fichePdf": "/data/ainchock/reglement/zone-zr-p1.jpg",
+        "remarque": "Soumise à plan de restructuration (loi 25-90) — paramètres définis au cas par cas."
+      },
+      "fichePages": ["/data/ainchock/reglement/zone-zr-p1.jpg"]
     }
   }
 }

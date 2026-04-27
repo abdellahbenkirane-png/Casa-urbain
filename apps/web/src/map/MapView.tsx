@@ -18,12 +18,19 @@ export interface ParcelleProperties {
   prixTerrainMedianDhM2: number;
 }
 
+// Couleur dérivée de la famille de zone (A, B, C, D, E, I, PB, PU, S, ZR).
+// On extrait la lettre initiale du code (ex. "B5" → "B", "PB" → "PB", "I3" → "I").
 const ZONE_COLORS: Record<string, string> = {
-  SD1: "#2f81f7",
-  SD2: "#58a6ff",
-  ZH: "#3fb950",
-  ZE: "#f0883e",
-  ZI: "#a371f7",
+  A: "#2f81f7",
+  B: "#58a6ff",
+  C: "#79c0ff",
+  D: "#3fb950",
+  E: "#a5d6ff",
+  I: "#a371f7",
+  PB: "#f0883e",
+  PU: "#db61a2",
+  S: "#d29922",
+  ZR: "#8b949e",
 };
 
 export function MapView({ onParcelSelect }: Props) {
@@ -160,14 +167,27 @@ export function MapView({ onParcelSelect }: Props) {
         // 3. Parcelles de démo (cliquables, par-dessus tout le reste)
         map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
 
+        // famille = ["case", [== zone "PB"], "PB", [== zone "PU"], "PU", [slice zone 0 1]]
+        const familleExpr: maplibregl.ExpressionSpecification = [
+          "case",
+          ["==", ["slice", ["get", "zone"], 0, 2], "PB"], "PB",
+          ["==", ["slice", ["get", "zone"], 0, 2], "PU"], "PU",
+          ["==", ["slice", ["get", "zone"], 0, 2], "ZR"], "ZR",
+          ["slice", ["get", "zone"], 0, 1],
+        ];
         const matchExpr: maplibregl.ExpressionSpecification = [
           "match",
-          ["get", "zone"],
-          "SD1", ZONE_COLORS.SD1!,
-          "SD2", ZONE_COLORS.SD2!,
-          "ZH", ZONE_COLORS.ZH!,
-          "ZE", ZONE_COLORS.ZE!,
-          "ZI", ZONE_COLORS.ZI!,
+          familleExpr,
+          "A", ZONE_COLORS.A!,
+          "B", ZONE_COLORS.B!,
+          "C", ZONE_COLORS.C!,
+          "D", ZONE_COLORS.D!,
+          "E", ZONE_COLORS.E!,
+          "I", ZONE_COLORS.I!,
+          "PB", ZONE_COLORS.PB!,
+          "PU", ZONE_COLORS.PU!,
+          "S", ZONE_COLORS.S!,
+          "ZR", ZONE_COLORS.ZR!,
           "#888",
         ];
         map.addLayer({

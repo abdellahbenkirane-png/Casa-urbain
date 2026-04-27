@@ -3,27 +3,41 @@ import { getZone } from "../zoning/zones";
 import type { ParcelleProperties } from "../map/MapView";
 
 /**
- * Construit un scénario initial à partir de la parcelle et de son zonage.
- * L'investisseur peut tout modifier ensuite dans le formulaire.
+ * Construit un scénario initial à partir de la parcelle et de son zonage
+ * (codes du PAU homologué 2025 : A, B, C, D, E, I, PB, PU, S, ZR…).
+ *
+ * Heuristique :
+ *  - Surface plancher constructible ≈ surface_terrain × COS (si COS défini)
+ *  - sinon ≈ surface_terrain × ratio dérivé du nombre d'étages
+ *  - Surface vendable ≈ 85 % de la surface plancher (déduction parties communes)
+ *  - Allocation par défaut : RDC commercial sur ~30 % de la surface, le reste en
+ *    appartements, plus une terrasse égale à ~50 % de la surface terrain
+ *
+ * L'investisseur ajuste tout dans le formulaire ensuite.
  */
 export function buildInitialScenario(parcelle: ParcelleProperties): SimulationInput {
   const zone = getZone(parcelle.zone);
-  const cus = zone?.parametres.cus ?? 1.5;
-  const empriseSol = zone?.parametres.emprisAuSolMaxPct ?? 0.6;
-  const etages = zone?.parametres.nombreEtagesMax ?? 4;
-
-  const surfaceConstructibleSol = parcelle.surface * empriseSol;
-  const surfacePlancher = parcelle.surface * cus;
+  const cos = zone?.parametres.cos ?? null;
+  const etagesMax = zone?.parametres.nombreEtagesMax ?? 4;
+  const etagesEffectifs = etagesMax > 0 ? etagesMax : 4;
+  // Si COS non fixé, on retombe sur un ratio raisonnable basé sur les étages
+  const surfacePlancher = parcelle.surface * (cos ?? Math.max(1, etagesEffectifs * 0.5));
   const surfaceVendable = surfacePlancher * 0.85;
-  const surfaceLC = surfaceConstructibleSol;
+
+  // 30 % de la surface vendable en commerce RDC max, plafonné à la surface au sol
+  const surfaceLC = Math.min(surfaceVendable * 0.3, parcelle.surface * 0.7);
   const surfaceApparts = Math.max(0, surfaceVendable - surfaceLC);
+
+  // Coût construction : RDC/sous-sol moins cher, étages plus chers
+  const surfaceConstrSousSol = parcelle.surface * 0.7 + surfaceLC;
+  const surfaceConstrEtages = Math.max(0, surfacePlancher - surfaceConstrSousSol);
 
   return {
     nom: `Scénario base ${parcelle.id}`,
     terrain: {
       surface: parcelle.surface,
       prixTerrainDhParM2: parcelle.prixTerrainMedianDhM2,
-      nombreEtages: etages,
+      nombreEtages: etagesEffectifs,
       facade1: parcelle.facade1,
       facade2: parcelle.facade2,
     },
@@ -48,12 +62,12 @@ export function buildInitialScenario(parcelle: ParcelleProperties): SimulationIn
       {
         libelle: "Sous-sol et RDC",
         prixHtDhParM2: 1700,
-        superficieConstruite: Math.round(surfaceConstructibleSol * 2),
+        superficieConstruite: Math.round(surfaceConstrSousSol),
       },
       {
         libelle: "Étages courants",
         prixHtDhParM2: 3800,
-        superficieConstruite: Math.round(surfacePlancher - surfaceConstructibleSol),
+        superficieConstruite: Math.round(surfaceConstrEtages),
       },
     ],
     hypotheses: { ...DEFAULT_HYPOTHESES },
