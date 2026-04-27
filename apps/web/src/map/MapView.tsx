@@ -18,6 +18,19 @@ export interface ParcelleProperties {
   prixTerrainMedianDhM2: number;
 }
 
+interface Diag {
+  containerW: number;
+  containerH: number;
+  canvasW: number;
+  canvasH: number;
+  canvasDisplay: string;
+  canvasOpacity: string;
+  zoom: number;
+  centerLng: number;
+  centerLat: number;
+  tilesLoaded: number;
+}
+
 const ZONE_COLORS: Record<string, string> = {
   SD1: "#2f81f7",
   SD2: "#58a6ff",
@@ -30,16 +43,10 @@ export function MapView({ onParcelSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string>("init");
+  const [diag, setDiag] = useState<Diag | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-
-    console.log("[MapView] mounting, container size:",
-      containerRef.current.clientWidth, "x", containerRef.current.clientHeight);
-    console.log("[MapView] webgl supported:",
-      !!document.createElement("canvas").getContext("webgl2") ||
-      !!document.createElement("canvas").getContext("webgl"));
 
     let map: MlMap;
     try {
@@ -56,8 +63,7 @@ export function MapView({ onParcelSelect }: Props) {
                 "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
               ],
               tileSize: 256,
-              attribution:
-                "© OpenStreetMap contributors © CARTO",
+              attribution: "© OpenStreetMap contributors © CARTO",
             },
           },
           layers: [{ id: "base", type: "raster", source: "base" }],
@@ -66,38 +72,49 @@ export function MapView({ onParcelSelect }: Props) {
         zoom: 14,
       });
       mapRef.current = map;
-      setStatus("constructed");
-      console.log("[MapView] map constructed");
     } catch (e) {
-      console.error("[MapView] constructor threw", e);
       setError(String(e));
       return;
     }
 
+    let tilesLoaded = 0;
+
+    const refreshDiag = () => {
+      if (!containerRef.current || !mapRef.current) return;
+      const c = containerRef.current;
+      const cv = c.querySelector(".maplibregl-canvas") as HTMLCanvasElement | null;
+      const r = cv?.getBoundingClientRect();
+      const cs = cv ? getComputedStyle(cv) : null;
+      const center = mapRef.current.getCenter();
+      setDiag({
+        containerW: c.clientWidth,
+        containerH: c.clientHeight,
+        canvasW: r?.width ?? 0,
+        canvasH: r?.height ?? 0,
+        canvasDisplay: cs?.display ?? "(no canvas)",
+        canvasOpacity: cs?.opacity ?? "—",
+        zoom: Number(mapRef.current.getZoom().toFixed(2)),
+        centerLng: Number(center.lng.toFixed(4)),
+        centerLat: Number(center.lat.toFixed(4)),
+        tilesLoaded,
+      });
+    };
+
     map.on("error", (e) => {
-      console.error("[MapView] map error event", e);
       const msg = e.error?.message ?? String(e);
-      if (/Failed to fetch|NetworkError|blocked/i.test(msg)) {
-        setError(
-          "Tuiles bloquées (probablement par un bloqueur de pubs). Désactive-le sur ce site et recharge.",
-        );
-      } else {
-        setError(msg);
-      }
+      setError(/Failed to fetch|NetworkError|blocked/i.test(msg)
+        ? "Tuiles bloquées — désactive bloqueurs/extensions et recharge."
+        : msg);
     });
 
-    map.on("data", (e) => {
-      const ev = e as { dataType?: string; isSourceLoaded?: boolean; sourceId?: string };
-      if (ev.dataType === "source" && ev.isSourceLoaded) {
-        console.log(`[MapView] source loaded: ${ev.sourceId}`);
-      }
-    });
+    map.on("dataloading", () => { tilesLoaded++; });
+    map.on("data", refreshDiag);
+    map.on("idle", refreshDiag);
+    map.on("moveend", refreshDiag);
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-    map.on("load", async () => {
-      console.log("[MapView] style loaded");
-      setStatus("loaded");
+    map.on("load", () => {
       try {
         map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
 
@@ -129,7 +146,6 @@ export function MapView({ onParcelSelect }: Props) {
           source: "parcelles",
           paint: { "fill-color": matchExpr, "fill-opacity": 0.45 },
         });
-
         map.addLayer({
           id: "parcelles-outline",
           type: "line",
@@ -148,11 +164,10 @@ export function MapView({ onParcelSelect }: Props) {
         map.on("mouseleave", "parcelles-fill", () => {
           map.getCanvas().style.cursor = "";
         });
-        setStatus("ready");
       } catch (e) {
-        console.error("[MapView] failed to load parcels", e);
         setError(String(e));
       }
+      refreshDiag();
     });
 
     const onResize = () => map.resize();
@@ -168,9 +183,15 @@ export function MapView({ onParcelSelect }: Props) {
   return (
     <>
       <div ref={containerRef} className="map" />
-      <div className="map-status">
-        {error ? `⚠ ${error}` : status === "ready" ? "" : `Carte : ${status}…`}
-      </div>
+      {error && <div className="map-error">⚠ {error}</div>}
+      {diag && (
+        <div className="map-diag">
+          <div>Conteneur : {diag.containerW}×{diag.containerH}</div>
+          <div>Canvas : {Math.round(diag.canvasW)}×{Math.round(diag.canvasH)} ({diag.canvasDisplay}, op {diag.canvasOpacity})</div>
+          <div>Zoom : {diag.zoom} · Centre : {diag.centerLng}, {diag.centerLat}</div>
+          <div>Tuiles déclenchées : {diag.tilesLoaded}</div>
+        </div>
+      )}
     </>
   );
 }
