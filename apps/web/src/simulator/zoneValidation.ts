@@ -56,52 +56,10 @@ export function validate(input: SimulationInput, zoneCode: string): Violation[] 
     });
   }
 
-  // COS = coefficient d'occupation du sol PAR ÉTAGE.
-  // Plafond total = cos × (RDC + nombreEtagesMax). On compare la surface
-  // plancher cumulée à ce plafond.
-  if (p.cos != null && t.surface > 0) {
-    const niveaux = (p.nombreEtagesMax ?? 0) + 1; // RDC + étages
-    const cosMaxTotal = p.cos * niveaux;
-    const surfacePlancher = input.constructions.reduce(
-      (acc, c) => acc + c.superficieConstruite,
-      0,
-    );
-    const cosActuel = surfacePlancher / t.surface;
-    if (cosActuel > cosMaxTotal * 1.05) {
-      v.push({
-        severity: "error",
-        field: "constructions",
-        message: `COS total dépassé : ${cosActuel.toFixed(2)} > ${cosMaxTotal.toFixed(2)} (COS ${p.cos.toFixed(2)}/étage × ${niveaux} niveaux ; surface plancher ${Math.round(surfacePlancher)} m² sur terrain ${t.surface} m²)`,
-        ruleValue: cosMaxTotal,
-        actualValue: cosActuel,
-      });
-    } else if (cosActuel > cosMaxTotal) {
-      v.push({
-        severity: "warning",
-        field: "constructions",
-        message: `COS total limite : ${cosActuel.toFixed(2)} ≈ max ${cosMaxTotal.toFixed(2)} (COS ${p.cos.toFixed(2)}/étage × ${niveaux})`,
-        ruleValue: cosMaxTotal,
-        actualValue: cosActuel,
-      });
-    }
-  }
-
-  // CUS = emprise au sol / surface terrain
-  // Heuristique : on prend la plus grande superficie de construction comme
-  // approximation de l'emprise au sol (généralement le RDC ou le sous-sol).
-  if (p.cus != null && t.surface > 0 && input.constructions.length > 0) {
-    const empriseSol = Math.max(...input.constructions.map((c) => c.superficieConstruite));
-    const cusActuel = empriseSol / t.surface;
-    if (cusActuel > p.cus * 1.05) {
-      v.push({
-        severity: "warning",
-        field: "constructions.empriseSol",
-        message: `CUS dépassé : ${(cusActuel * 100).toFixed(0)} % > ${(p.cus * 100).toFixed(0)} % (emprise estimée ${Math.round(empriseSol)} m²)`,
-        ruleValue: p.cus,
-        actualValue: cusActuel,
-      });
-    }
-  }
+  // Note : les contrôles COS / CUS ont été désactivés à la demande de
+  // l'utilisateur. Les valeurs restent dans pau-zones.json pour pouvoir
+  // les réactiver une fois les règles de calcul (par étage / total)
+  // confirmées avec les services de l'AUC.
 
   return v;
 }
