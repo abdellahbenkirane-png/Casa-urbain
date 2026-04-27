@@ -1,6 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm --workspace @casa/web run build && node scripts/vercel-output.mjs",
-  "installCommand": "npm install",
-  "framework": null
-}
