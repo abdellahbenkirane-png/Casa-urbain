@@ -267,31 +267,22 @@ export function MapView({ onParcelSelect }: Props) {
           data: { type: "FeatureCollection", features: [] },
         });
 
-        // Couleur par famille de zone via expression "case + match" sur les
-        // 1-2 premiers caractères de l'attribut `secteur`. Coalesce avec ""
-        // pour ne pas crasher sur les features dont secteur est null.
-        const secteurExpr: maplibregl.ExpressionSpecification = [
-          "coalesce",
-          ["get", "secteur"],
-          "",
-        ];
+        // L'attribut "famille" est calculé au fetch (cf. aucService.familleOf),
+        // donc le match MapLibre est trivialement direct.
         const aucColorExpr: maplibregl.ExpressionSpecification = [
-          "case",
-          ["==", ["slice", secteurExpr, 0, 2], "PB"], ZONE_COLORS.PB!,
-          ["==", ["slice", secteurExpr, 0, 2], "PU"], ZONE_COLORS.PU!,
-          ["==", ["slice", secteurExpr, 0, 2], "ZR"], ZONE_COLORS.ZR!,
-          [
-            "match",
-            ["slice", secteurExpr, 0, 1],
-            "A", ZONE_COLORS.A!,
-            "B", ZONE_COLORS.B!,
-            "C", ZONE_COLORS.C!,
-            "D", ZONE_COLORS.D!,
-            "E", ZONE_COLORS.E!,
-            "I", ZONE_COLORS.I!,
-            "S", ZONE_COLORS.S!,
-            "#e74c3c", // rouge — fallback debug pour repérer les secteurs non couverts
-          ],
+          "match",
+          ["coalesce", ["get", "famille"], "?"],
+          "A", ZONE_COLORS.A!,
+          "B", ZONE_COLORS.B!,
+          "C", ZONE_COLORS.C!,
+          "D", ZONE_COLORS.D!,
+          "E", ZONE_COLORS.E!,
+          "I", ZONE_COLORS.I!,
+          "PB", ZONE_COLORS.PB!,
+          "PU", ZONE_COLORS.PU!,
+          "S", ZONE_COLORS.S!,
+          "ZR", ZONE_COLORS.ZR!,
+          "#888", // gris discret pour les familles non répertoriées
         ];
         map.addLayer({
           id: "auc-zonage-fill",
@@ -303,7 +294,7 @@ export function MapView({ onParcelSelect }: Props) {
           id: "auc-zonage-outline",
           type: "line",
           source: "auc-zonage",
-          paint: { "line-color": "#1f2937", "line-width": 0.6, "line-opacity": 0 },
+          paint: { "line-color": "#0e1116", "line-width": 1.5, "line-opacity": 0 },
         });
 
         // 4. Parcelles de démo (fallback quand AUC désactivé)
@@ -448,7 +439,7 @@ export function MapView({ onParcelSelect }: Props) {
         if (retries++ < 50) setTimeout(apply, 100);
         return;
       }
-      map.setPaintProperty("auc-zonage-fill", "fill-opacity", aucZonage ? 0.55 : 0);
+      map.setPaintProperty("auc-zonage-fill", "fill-opacity", aucZonage ? 0.32 : 0);
       map.setPaintProperty("auc-zonage-outline", "line-opacity", aucZonage ? 0.9 : 0);
       if (map.getLayer("parcelles-fill")) {
         const hide = aucZonage && aucCount > 0;

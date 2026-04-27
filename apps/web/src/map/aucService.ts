@@ -188,6 +188,21 @@ export async function fetchEquipements(
   return esriToGeojson<EquipementAttributes>(data, "equipements");
 }
 
+/**
+ * Calcule la famille de zone (A, B, C, D, E, I, PB, PU, S, ZR…) à partir
+ * du code de sous-secteur (B4, E2, A6, PBC5'…). Utilisé pour colorer la
+ * carte sans avoir à monter une expression MapLibre tordue.
+ */
+export function familleOf(secteur: unknown): string {
+  if (typeof secteur !== "string") return "?";
+  const s = secteur.trim();
+  if (!s) return "?";
+  if (s.startsWith("PB")) return "PB";
+  if (s.startsWith("PU")) return "PU";
+  if (s.startsWith("ZR")) return "ZR";
+  return s.charAt(0).toUpperCase();
+}
+
 function esriToGeojson<A>(
   data: EsriResponse,
   layerKey: AucLayer,
@@ -197,9 +212,15 @@ function esriToGeojson<A>(
     const rings = f.geometry?.rings;
     if (!rings || rings.length === 0) continue;
     const id = typeof f.attributes.id === "number" ? f.attributes.id : 0;
+    const famille = familleOf((f.attributes as { secteur?: unknown }).secteur);
     features.push({
       type: "Feature",
-      properties: { ...(f.attributes as A), aucId: id, aucLayer: layerKey },
+      properties: {
+        ...(f.attributes as A),
+        aucId: id,
+        aucLayer: layerKey,
+        famille,
+      },
       geometry: ringsToPolygon(rings),
     });
   }
