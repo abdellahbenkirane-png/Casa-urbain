@@ -138,12 +138,12 @@ export function MapView({ onParcelSelect }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [planche, setPlanche] = useState(false);
   const [plancheOpacity, setPlancheOpacity] = useState(0.65);
-  const [aucZonage, setAucZonage] = useState(false);
+  const [aucZonage, setAucZonage] = useState(true);
   const [aucStatus, setAucStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [aucCount, setAucCount] = useState(0);
   const [layerInput, setLayerInput] = useState(AUC_LAYERS.zonage);
   const [layerEditing, setLayerEditing] = useState(false);
-  const [satellite, setSatellite] = useState(false);
+  const [satellite, setSatellite] = useState(true);
   const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
     if (stored) {
