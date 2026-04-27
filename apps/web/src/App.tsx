@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard } from "./zoning/ZoneCard";
+import { DocumentLibrary } from "./zoning/DocumentLibrary";
 import { SimulatorPanel } from "./simulator/SimulatorPanel";
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
       </div>
 
       <aside className="panel">
+        <DocumentLibrary />
         {!parcelle ? (
           <div className="panel-empty">
             <p>Cliquez sur une parcelle pour afficher son zonage<br />et lancer une simulation.</p>

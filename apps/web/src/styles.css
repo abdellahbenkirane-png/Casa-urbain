@@ -67,6 +67,47 @@ body { background: var(--bg); color: var(--text); }
   max-width: 80%;
 }
 
+/* === Document library (PAU docs) === */
+
+.docs {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.docs-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.docs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.doc-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 120ms ease;
+}
+.doc-chip:hover { border-color: var(--accent); }
+.doc-emoji { font-size: 18px; }
+.doc-chip > div { display: flex; flex-direction: column; }
+.doc-label { font-size: 12px; font-weight: 600; }
+.doc-desc { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
 /* === Fiche viewer modal === */
 
 .modal-backdrop {
