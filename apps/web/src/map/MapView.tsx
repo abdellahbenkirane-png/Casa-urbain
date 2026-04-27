@@ -33,12 +33,102 @@ const ZONE_COLORS: Record<string, string> = {
   ZR: "#8b949e",
 };
 
+interface BBox { W: number; E: number; S: number; N: number }
+
+const DEFAULT_BBOX: BBox = { W: -7.673, E: -7.566, S: 33.4685, N: 33.5843 };
+
+function PlancheCalibration({
+  bbox,
+  setBbox,
+  onClose,
+}: {
+  bbox: BBox;
+  setBbox: (b: BBox) => void;
+  onClose: () => void;
+}) {
+  const NUDGE_LNG = 0.0005; // ≈ 50 m E/O à cette latitude
+  const NUDGE_LAT = 0.0005; // ≈ 55 m N/S
+  const SCALE_STEP = 0.005;
+
+  const move = (dx: number, dy: number) =>
+    setBbox({ W: bbox.W + dx, E: bbox.E + dx, S: bbox.S + dy, N: bbox.N + dy });
+  const scale = (factor: number) => {
+    const cx = (bbox.W + bbox.E) / 2;
+    const cy = (bbox.S + bbox.N) / 2;
+    const w = (bbox.E - bbox.W) * factor;
+    const h = (bbox.N - bbox.S) * factor;
+    setBbox({ W: cx - w / 2, E: cx + w / 2, S: cy - h / 2, N: cy + h / 2 });
+  };
+  const stretchH = (factor: number) => {
+    const cx = (bbox.W + bbox.E) / 2;
+    const w = (bbox.E - bbox.W) * factor;
+    setBbox({ ...bbox, W: cx - w / 2, E: cx + w / 2 });
+  };
+  const stretchV = (factor: number) => {
+    const cy = (bbox.S + bbox.N) / 2;
+    const h = (bbox.N - bbox.S) * factor;
+    setBbox({ ...bbox, S: cy - h / 2, N: cy + h / 2 });
+  };
+
+  return (
+    <div className="planche-calib">
+      <div className="planche-calib-row">
+        <strong>Caler la planche</strong>
+        <button className="btn-mini" onClick={onClose}>✕</button>
+      </div>
+      <div className="planche-calib-grid">
+        <span></span>
+        <button className="btn-mini" onClick={() => move(0, NUDGE_LAT)}>↑</button>
+        <span></span>
+        <button className="btn-mini" onClick={() => move(-NUDGE_LNG, 0)}>←</button>
+        <button className="btn-mini" onClick={() => setBbox(DEFAULT_BBOX)} title="Reset">⟳</button>
+        <button className="btn-mini" onClick={() => move(NUDGE_LNG, 0)}>→</button>
+        <span></span>
+        <button className="btn-mini" onClick={() => move(0, -NUDGE_LAT)}>↓</button>
+        <span></span>
+      </div>
+      <div className="planche-calib-row">
+        <span>Échelle :</span>
+        <button className="btn-mini" onClick={() => scale(1 - SCALE_STEP)}>−</button>
+        <button className="btn-mini" onClick={() => scale(1 + SCALE_STEP)}>+</button>
+      </div>
+      <div className="planche-calib-row">
+        <span>Largeur :</span>
+        <button className="btn-mini" onClick={() => stretchH(1 - SCALE_STEP)}>−</button>
+        <button className="btn-mini" onClick={() => stretchH(1 + SCALE_STEP)}>+</button>
+      </div>
+      <div className="planche-calib-row">
+        <span>Hauteur :</span>
+        <button className="btn-mini" onClick={() => stretchV(1 - SCALE_STEP)}>−</button>
+        <button className="btn-mini" onClick={() => stretchV(1 + SCALE_STEP)}>+</button>
+      </div>
+      <div className="planche-calib-coords">
+        W {bbox.W.toFixed(4)} · E {bbox.E.toFixed(4)} <br />
+        S {bbox.S.toFixed(4)} · N {bbox.N.toFixed(4)}
+      </div>
+    </div>
+  );
+}
+
 export function MapView({ onParcelSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [planche, setPlanche] = useState(false);
   const [plancheOpacity, setPlancheOpacity] = useState(0.65);
+  // 4 coins du calage : west, east, south, north (lng, lng, lat, lat)
+  const [bbox, setBbox] = useState<{ W: number; E: number; S: number; N: number }>(() => {
+    const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        // fallthrough
+      }
+    }
+    return { W: -7.673, E: -7.566, S: 33.4685, N: 33.5843 };
+  });
+  const [calibrating, setCalibrating] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -85,19 +175,15 @@ export function MapView({ onParcelSelect }: Props) {
 
     map.on("load", async () => {
       try {
-        // 0. Planche PAU d'Aïn Chock — overlay raster (approx. cadré sur le périmètre)
-        // L'image est en portrait alors que le périmètre administratif OSM est en
-        // paysage : on accepte un léger étirement, c'est volontaire pour qu'elle
-        // recouvre approximativement la zone. Géoréférencement précis = future itération.
-        const W = -7.6730, E = -7.5660, S = 33.4685, N = 33.5843;
+        // 0. Planche PAU d'Aïn Chock — overlay raster (cadrage ajustable, coins persistés)
         map.addSource("planche", {
           type: "image",
           url: "/data/ainchock/pau-planche.jpg",
           coordinates: [
-            [W, N], // top-left
-            [E, N], // top-right
-            [E, S], // bottom-right
-            [W, S], // bottom-left
+            [bbox.W, bbox.N], // top-left
+            [bbox.E, bbox.N], // top-right
+            [bbox.E, bbox.S], // bottom-right
+            [bbox.W, bbox.S], // bottom-left
           ],
         });
         map.addLayer({
@@ -240,6 +326,26 @@ export function MapView({ onParcelSelect }: Props) {
     map.setPaintProperty("planche-layer", "raster-opacity", op);
   }, [planche, plancheOpacity]);
 
+  // Met à jour les coins de la planche + persiste
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const src = map.getSource("planche") as maplibregl.ImageSource | undefined;
+    if (src && "setCoordinates" in src) {
+      src.setCoordinates([
+        [bbox.W, bbox.N],
+        [bbox.E, bbox.N],
+        [bbox.E, bbox.S],
+        [bbox.W, bbox.S],
+      ]);
+    }
+    try {
+      localStorage.setItem("planche-bbox", JSON.stringify(bbox));
+    } catch {
+      // localStorage indisponible (mode privé) — ok
+    }
+  }, [bbox]);
+
   return (
     <>
       <div ref={containerRef} className="map" />
@@ -253,17 +359,25 @@ export function MapView({ onParcelSelect }: Props) {
           <span>Planche PAU</span>
         </label>
         {planche && (
-          <input
-            type="range"
-            min={0.2}
-            max={1}
-            step={0.05}
-            value={plancheOpacity}
-            onChange={(e) => setPlancheOpacity(Number(e.target.value))}
-            title="Opacité de la planche"
-          />
+          <>
+            <input
+              type="range"
+              min={0.2}
+              max={1}
+              step={0.05}
+              value={plancheOpacity}
+              onChange={(e) => setPlancheOpacity(Number(e.target.value))}
+              title="Opacité de la planche"
+            />
+            <button className="btn-mini" onClick={() => setCalibrating((c) => !c)}>
+              {calibrating ? "Fermer le calage" : "Caler la planche"}
+            </button>
+          </>
         )}
       </div>
+      {planche && calibrating && (
+        <PlancheCalibration bbox={bbox} setBbox={setBbox} onClose={() => setCalibrating(false)} />
+      )}
       {error && <div className="map-error">⚠ {error}</div>}
     </>
   );

@@ -86,6 +86,32 @@ pix.save('apps/web/public/data/ainchock/pau-planche.jpg', jpg_quality=80)
 "
 ```
 
+## Pistes d'amélioration
+
+### Vectoriser les zones de la planche PAU (gros chantier)
+
+La planche d'ensemble fournit le zonage sous forme rastérisée. Pour qu'une
+parcelle quelconque puisse hériter automatiquement de son code zone (et donc
+de ses règles dans `data/reglement/pau-zones.json`), il faut convertir les
+polygones de la planche en GeoJSON. Trois approches, par effort croissant :
+
+1. **Manuelle dans QGIS** — calage de la planche (cf. section ci-dessus) puis
+   tracé polygone par polygone des zones avec l'outil de digitalisation,
+   attribut `zone` saisi à chaque polygone. Coût : ~1 jour de travail attentif
+   pour ~50-200 polygones d'Aïn Chock.
+2. **Semi-auto par classification couleurs** — chaque zone a une teinte distinctive
+   sur la planche. Un script Python avec `rasterio` + `scikit-image` peut
+   classifier les pixels par couleur, vectoriser les régions, simplifier et
+   exporter en GeoJSON. Imprécis aux bords mais rapide à mettre en place.
+3. **Demander le SIG vectoriel à l'AUC** — voir
+   [docs/courrier-auc.md](../docs/courrier-auc.md). Solution officielle, sans
+   ambiguïté, mais dépend d'un délai de réponse 2-6 semaines.
+
+Une fois disponible, déposer le fichier dans `data/ainchock/zones-pau.geojson`
+avec un attribut `zone` aligné sur les codes du `pau-zones.json`. La carte
+ajoutera automatiquement le calque (cf. [apps/web/src/map/MapView.tsx](../apps/web/src/map/MapView.tsx)
+section "Pistes futures").
+
 ## Remplacer par les vraies données AUC
 
 Quand l'Agence Urbaine de Casablanca livrera le vrai parcellaire et le zonage du

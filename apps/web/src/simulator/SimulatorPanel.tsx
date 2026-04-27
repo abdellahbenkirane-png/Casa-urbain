@@ -11,6 +11,7 @@ import { buildInitialScenario } from "./buildInitial";
 import { SimulatorForm } from "./SimulatorForm";
 import { Results } from "./Results";
 import { exportScenarioPdf, exportScenarioXlsx } from "./exports";
+import { validate } from "./zoneValidation";
 import type { ParcelleProperties } from "../map/MapView";
 
 export function SimulatorPanel({ parcelle }: { parcelle: ParcelleProperties }) {
@@ -37,6 +38,10 @@ export function SimulatorPanel({ parcelle }: { parcelle: ParcelleProperties }) {
   const advanced = useMemo(
     () => (draft && result ? computeAdvancedMetrics(draft, result) : null),
     [draft, result],
+  );
+  const violations = useMemo(
+    () => (draft ? validate(draft, parcelle.zone) : []),
+    [draft, parcelle.zone],
   );
 
   if (!draft || !result || !advanced) return null;
@@ -73,6 +78,18 @@ export function SimulatorPanel({ parcelle }: { parcelle: ParcelleProperties }) {
           ⬇ PDF
         </button>
       </div>
+      {violations.length > 0 && (
+        <div className="violations">
+          <strong>Conformité PAU — {violations.length} alerte{violations.length > 1 ? "s" : ""}</strong>
+          <ul>
+            {violations.map((v, i) => (
+              <li key={i} className={`violation ${v.severity}`}>
+                {v.severity === "error" ? "🚫" : "⚠️"} {v.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <Results result={result} advanced={advanced} />
       <Comparator />
       <SimulatorForm input={draft} onChange={onChange} />

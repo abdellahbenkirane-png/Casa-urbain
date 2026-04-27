@@ -1,4 +1,3 @@
-import ExcelJS from "exceljs";
 import {
   computeAdvancedMetrics,
   simulate,
@@ -9,6 +8,8 @@ const sanitizeSheetName = (name: string) =>
   name.replace(/[\\/*?:[\]]/g, " ").slice(0, 30) || "Scénario";
 
 export async function exportScenarioXlsx(input: SimulationInput): Promise<void> {
+  // Import dynamique : ExcelJS pèse ~900 kB et n'est nécessaire qu'au clic export.
+  const ExcelJS = (await import("exceljs")).default;
   const result = simulate(input);
   const adv = computeAdvancedMetrics(input, result);
 
