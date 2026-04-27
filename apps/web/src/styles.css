@@ -580,6 +580,15 @@ body { background: var(--bg); color: var(--text); }
   gap: 8px;
   padding: 10px 0;
 }
+.form-subtitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
 .form-grid label {
   display: flex;
   flex-direction: column;

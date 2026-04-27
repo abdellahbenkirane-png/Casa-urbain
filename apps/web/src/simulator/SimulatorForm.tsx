@@ -252,117 +252,9 @@ export function SimulatorForm({ input, onChange }: Props) {
         >
           + Ajouter une ligne
         </button>
-      </details>
 
-      <details>
-        <summary>Hypothèses</summary>
+        <div className="form-subtitle">Forfaits</div>
         <div className="form-grid">
-          <label>
-            <span>TVA vente</span>
-            <PctInput value={input.hypotheses.tvaVente} onChange={(v) => setH({ tvaVente: v })} />
-          </label>
-          <label>
-            <span>TVA construction</span>
-            <PctInput
-              value={input.hypotheses.tvaConstruction}
-              onChange={(v) => setH({ tvaConstruction: v })}
-            />
-          </label>
-          <label>
-            <span>Enregistrement</span>
-            <PctInput
-              value={input.hypotheses.tauxEnregistrement}
-              onChange={(v) => setH({ tauxEnregistrement: v })}
-            />
-          </label>
-          <label>
-            <span>Notaire</span>
-            <NumInput
-              value={input.hypotheses.notaireForfait}
-              step={1000}
-              onChange={(v) => setH({ notaireForfait: v })}
-              suffix="DH"
-            />
-          </label>
-          <label>
-            <span>Études</span>
-            <PctInput value={input.hypotheses.tauxEtudes} onChange={(v) => setH({ tauxEtudes: v })} />
-          </label>
-          <label>
-            <span>Suivi chantier</span>
-            <NumInput
-              value={input.hypotheses.suiviChantierParMois}
-              step={1000}
-              onChange={(v) => setH({ suiviChantierParMois: v })}
-              suffix="DH/mois"
-            />
-          </label>
-          <label>
-            <span>Durée chantier</span>
-            <NumInput
-              value={input.hypotheses.dureeChantierMois}
-              onChange={(v) => setH({ dureeChantierMois: v })}
-              suffix="mois"
-            />
-          </label>
-          <label>
-            <span>Frais commune</span>
-            <NumInput
-              value={input.hypotheses.fraisCommune}
-              step={5000}
-              onChange={(v) => setH({ fraisCommune: v })}
-              suffix="DH"
-            />
-          </label>
-          <label>
-            <span>Charges fin.</span>
-            <PctInput
-              value={input.hypotheses.tauxChargesFinancieres}
-              onChange={(v) => setH({ tauxChargesFinancieres: v })}
-            />
-          </label>
-          <label>
-            <span>Durée projet</span>
-            <NumInput
-              value={input.hypotheses.dureeProjetAnnees}
-              onChange={(v) => setH({ dureeProjetAnnees: v })}
-              suffix="ans"
-            />
-          </label>
-          <label>
-            <span>Hypothèque</span>
-            <PctInput
-              value={input.hypotheses.tauxHypotheque}
-              onChange={(v) => setH({ tauxHypotheque: v })}
-            />
-          </label>
-          <label>
-            <span>Compteur général</span>
-            <NumInput
-              value={input.hypotheses.compteurGeneral}
-              step={10000}
-              onChange={(v) => setH({ compteurGeneral: v })}
-              suffix="DH"
-            />
-          </label>
-          <label>
-            <span>Éclatement titres</span>
-            <PctInput
-              value={input.hypotheses.tauxEclatementTitres}
-              onChange={(v) => setH({ tauxEclatementTitres: v })}
-            />
-          </label>
-          <label>
-            <span>Imprévus</span>
-            <PctInput
-              value={input.hypotheses.tauxImprevus}
-              onChange={(v) => setH({ tauxImprevus: v })}
-            />
-          </label>
-          <label>
-            <span>IS</span>
-            <PctInput value={input.hypotheses.tauxIs} onChange={(v) => setH({ tauxIs: v })} />
-          </label>
           <label>
             <span>Ascenseur (TTC)</span>
             <NumInput
@@ -391,12 +283,163 @@ export function SimulatorForm({ input, onChange }: Props) {
             />
           </label>
           <label>
+            <span>Apt témoin</span>
+            <NumInput
+              value={input.hypotheses.amenagementTemoin}
+              step={10000}
+              onChange={(v) => setH({ amenagementTemoin: v })}
+              suffix="DH"
+            />
+          </label>
+        </div>
+      </details>
+
+      <details>
+        <summary>1. Hypothèses · Acquisition</summary>
+        <div className="form-grid">
+          <label>
+            <span>Enregistrement</span>
+            <PctInput
+              value={input.hypotheses.tauxEnregistrement}
+              onChange={(v) => setH({ tauxEnregistrement: v })}
+            />
+          </label>
+          <label>
+            <span>Notaire</span>
+            <NumInput
+              value={input.hypotheses.notaireForfait}
+              step={1000}
+              onChange={(v) => setH({ notaireForfait: v })}
+              suffix="DH"
+            />
+          </label>
+        </div>
+      </details>
+
+      <details>
+        <summary>2. Hypothèses · Autorisations</summary>
+        <div className="form-grid">
+          <label>
+            <span>Études</span>
+            <PctInput
+              value={input.hypotheses.tauxEtudes}
+              onChange={(v) => setH({ tauxEtudes: v })}
+            />
+          </label>
+          <label>
+            <span>Suivi chantier</span>
+            <NumInput
+              value={input.hypotheses.suiviChantierParMois}
+              step={1000}
+              onChange={(v) => setH({ suiviChantierParMois: v })}
+              suffix="DH/mois"
+            />
+          </label>
+          <label>
+            <span>Durée chantier</span>
+            <NumInput
+              value={input.hypotheses.dureeChantierMois}
+              onChange={(v) => setH({ dureeChantierMois: v })}
+              suffix="mois"
+            />
+          </label>
+          <label>
+            <span>Frais commune</span>
+            <NumInput
+              value={input.hypotheses.fraisCommune}
+              step={5000}
+              onChange={(v) => setH({ fraisCommune: v })}
+              suffix="DH"
+            />
+          </label>
+        </div>
+      </details>
+
+      <details>
+        <summary>3. Hypothèses · Charges financières</summary>
+        <div className="form-grid">
+          <label>
+            <span>Taux charges fin.</span>
+            <PctInput
+              value={input.hypotheses.tauxChargesFinancieres}
+              onChange={(v) => setH({ tauxChargesFinancieres: v })}
+            />
+          </label>
+          <label>
             <span>Frais ouverture</span>
             <NumInput
               value={input.hypotheses.fraisOuvertureCompte}
               step={10000}
               onChange={(v) => setH({ fraisOuvertureCompte: v })}
               suffix="DH"
+            />
+          </label>
+          <label>
+            <span>Hypothèque</span>
+            <PctInput
+              value={input.hypotheses.tauxHypotheque}
+              onChange={(v) => setH({ tauxHypotheque: v })}
+            />
+          </label>
+          <label>
+            <span>Durée projet</span>
+            <NumInput
+              value={input.hypotheses.dureeProjetAnnees}
+              onChange={(v) => setH({ dureeProjetAnnees: v })}
+              suffix="ans"
+            />
+          </label>
+        </div>
+      </details>
+
+      <details>
+        <summary>4. Hypothèses · Charges liées à la vente</summary>
+        <div className="form-grid">
+          <label>
+            <span>Compteur général</span>
+            <NumInput
+              value={input.hypotheses.compteurGeneral}
+              step={10000}
+              onChange={(v) => setH({ compteurGeneral: v })}
+              suffix="DH"
+            />
+          </label>
+          <label>
+            <span>Éclatement titres</span>
+            <PctInput
+              value={input.hypotheses.tauxEclatementTitres}
+              onChange={(v) => setH({ tauxEclatementTitres: v })}
+            />
+          </label>
+          <label>
+            <span>Imprévus</span>
+            <PctInput
+              value={input.hypotheses.tauxImprevus}
+              onChange={(v) => setH({ tauxImprevus: v })}
+            />
+          </label>
+        </div>
+      </details>
+
+      <details>
+        <summary>5. Hypothèses · Impôts &amp; Taxes</summary>
+        <div className="form-grid">
+          <label>
+            <span>IS</span>
+            <PctInput value={input.hypotheses.tauxIs} onChange={(v) => setH({ tauxIs: v })} />
+          </label>
+          <label>
+            <span>TVA vente</span>
+            <PctInput
+              value={input.hypotheses.tvaVente}
+              onChange={(v) => setH({ tvaVente: v })}
+            />
+          </label>
+          <label>
+            <span>TVA construction</span>
+            <PctInput
+              value={input.hypotheses.tvaConstruction}
+              onChange={(v) => setH({ tvaConstruction: v })}
             />
           </label>
         </div>
