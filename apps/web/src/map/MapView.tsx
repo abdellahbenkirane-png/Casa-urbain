@@ -293,20 +293,17 @@ export function MapView({ onParcelSelect }: Props) {
             "#e74c3c", // rouge — fallback debug pour repérer les secteurs non couverts
           ],
         ];
-        // Mode debug : couleur fixe pour vérifier que la layer rend les polygones.
-        // Une fois visible, on remplacera par aucColorExpr.
-        void aucColorExpr;
         map.addLayer({
           id: "auc-zonage-fill",
           type: "fill",
           source: "auc-zonage",
-          paint: { "fill-color": "#e74c3c", "fill-opacity": 0.5 },
+          paint: { "fill-color": aucColorExpr, "fill-opacity": 0 },
         });
         map.addLayer({
           id: "auc-zonage-outline",
           type: "line",
           source: "auc-zonage",
-          paint: { "line-color": "#000", "line-width": 1.5 },
+          paint: { "line-color": "#1f2937", "line-width": 0.6, "line-opacity": 0 },
         });
 
         // 4. Parcelles de démo (fallback quand AUC désactivé)
@@ -439,7 +436,9 @@ export function MapView({ onParcelSelect }: Props) {
     }
   }, [bbox]);
 
-  // Toggle "Zonage AUC". On retente jusqu'à ce que la layer existe.
+  // Toggle "Zonage AUC" : on joue sur l'opacité plutôt que la visibilité
+  // pour éviter les courses entre la création des layers (load) et le clic
+  // utilisateur. Retry jusqu'à 5 s si la layer n'existe pas encore.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -449,8 +448,8 @@ export function MapView({ onParcelSelect }: Props) {
         if (retries++ < 50) setTimeout(apply, 100);
         return;
       }
-      console.log("[MapView] toggle AUC", { aucZonage, aucCount });
-      // Démos masquées dès qu'AUC est actif et a livré des features
+      map.setPaintProperty("auc-zonage-fill", "fill-opacity", aucZonage ? 0.55 : 0);
+      map.setPaintProperty("auc-zonage-outline", "line-opacity", aucZonage ? 0.9 : 0);
       if (map.getLayer("parcelles-fill")) {
         const hide = aucZonage && aucCount > 0;
         map.setPaintProperty("parcelles-fill", "fill-opacity", hide ? 0 : 0.7);
@@ -477,18 +476,6 @@ export function MapView({ onParcelSelect }: Props) {
         return;
       }
       src.setData(fc);
-      const sample =
-        fc.features[0]?.geometry?.type === "Polygon"
-          ? (fc.features[0].geometry as GeoJSON.Polygon).coordinates[0]?.[0]
-          : null;
-      console.log(
-        "[MapView] AUC setData",
-        fc.features.length,
-        "1er secteur:",
-        fc.features[0]?.properties?.secteur,
-        "1er coord:",
-        sample,
-      );
     };
 
     const refresh = async () => {

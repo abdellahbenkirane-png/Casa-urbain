@@ -6,12 +6,13 @@
 //   Headers : CORS ouvert (Access-Control-Allow-Origin: *)
 //   Sortie : { features: [{attributes, geometry: {rings}}], spatialReference: {wkid: 102100} }
 //
-// IDs des calques à confirmer/compléter au fur et à mesure de l'inspection
-// du géoportail. Layer-579748 est CONFIRMÉ comme étant le calque "Équipements
-// & espaces publics" (attribut `nature`). Le Layer-ID du calque ZONAGE (avec
-// attributs `zone` et `secteur`) est inconnu côté code — il peut être défini
-// par l'utilisateur via localStorage.aucZonageLayerId, sinon on tombe sur le
-// même ID que les équipements (ce qui est faux mais évite un crash).
+// IDs des calques karazal — confirmés par inspection du géoportail
+// e-auc.org/karazal :
+//   Layer-579747 → ZONAGE (attributs zone, secteur, commune, prefecture, area)
+//   Layer-579748 → ÉQUIPEMENTS & espaces publics (attribut nature)
+//
+// Possibilité d'override via localStorage.auc-zonage-layer-id pour explorer
+// d'autres calques sans redéployer.
 const STORAGE_KEY = "auc-zonage-layer-id";
 
 function readLayerOverride(): string | null {
@@ -26,7 +27,7 @@ export function setZonageLayerId(id: string): void {
 }
 
 export const AUC_LAYERS = {
-  zonage: readLayerOverride() ?? "Layer-579748",
+  zonage: readLayerOverride() ?? "Layer-579747",
   equipements: "Layer-579748",
 } as const;
 
