@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MlMap } from "maplibre-gl";
-import parcelles from "../../../../data/ainchock/parcelles.geojson?url";
+import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
+
+const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
 
 interface Props {
   onParcelSelect: (props: ParcelleProperties) => void;
@@ -78,12 +80,12 @@ export function MapView({ onParcelSelect }: Props) {
       console.log("[MapView] style loaded");
       setStatus("loaded");
       try {
-        const data = await fetch(parcelles).then((r) => r.json());
-        map.addSource("parcelles", { type: "geojson", data });
+        map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
 
         const bounds = new maplibregl.LngLatBounds();
-        for (const f of data.features ?? []) {
-          const coords = f.geometry?.coordinates?.[0];
+        for (const f of PARCELLES_DATA.features) {
+          const g = f.geometry as GeoJSON.Polygon | undefined;
+          const coords = g?.coordinates?.[0];
           if (Array.isArray(coords)) {
             for (const [lng, lat] of coords) bounds.extend([lng, lat]);
           }
