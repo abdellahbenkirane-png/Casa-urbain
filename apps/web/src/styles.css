@@ -235,6 +235,10 @@ body { background: var(--bg); color: var(--text); }
   width: 130px;
   accent-color: var(--accent);
 }
+.auc-status {
+  font-size: 11px;
+  color: var(--muted);
+}
 .btn-mini {
   background: var(--panel-2);
   border: 1px solid var(--border);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MlMap } from "maplibre-gl";
 import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
+import { fetchZonage } from "./aucService";
 
 const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
 
@@ -19,7 +20,6 @@ export interface ParcelleProperties {
 }
 
 // Couleur dérivée de la famille de zone (A, B, C, D, E, I, PB, PU, S, ZR).
-// On extrait la lettre initiale du code (ex. "B5" → "B", "PB" → "PB", "I3" → "I").
 const ZONE_COLORS: Record<string, string> = {
   A: "#2f81f7",
   B: "#58a6ff",
@@ -33,9 +33,31 @@ const ZONE_COLORS: Record<string, string> = {
   ZR: "#8b949e",
 };
 
+// Prix de terrain médian estimé par famille de zone (DH/m²).
+// À remplacer par des références marché réelles une fois disponibles.
+const PRIX_PAR_FAMILLE: Record<string, number> = {
+  A: 23000,
+  B: 18000,
+  C: 16000,
+  D: 15000,
+  E: 12000,
+  I: 8000,
+  PB: 14000,
+  PU: 17000,
+  S: 10000,
+  ZR: 11000,
+};
+
 interface BBox { W: number; E: number; S: number; N: number }
 
 const DEFAULT_BBOX: BBox = { W: -7.673, E: -7.566, S: 33.4685, N: 33.5843 };
+
+function familleOfSecteur(secteur: string): string {
+  if (secteur.startsWith("PB")) return "PB";
+  if (secteur.startsWith("PU")) return "PU";
+  if (secteur.startsWith("ZR")) return "ZR";
+  return secteur.charAt(0).toUpperCase();
+}
 
 function PlancheCalibration({
   bbox,
@@ -46,8 +68,8 @@ function PlancheCalibration({
   setBbox: (b: BBox) => void;
   onClose: () => void;
 }) {
-  const NUDGE_LNG = 0.0005; // ≈ 50 m E/O à cette latitude
-  const NUDGE_LAT = 0.0005; // ≈ 55 m N/S
+  const NUDGE_LNG = 0.0005;
+  const NUDGE_LAT = 0.0005;
   const SCALE_STEP = 0.005;
 
   const move = (dx: number, dy: number) =>
@@ -116,8 +138,10 @@ export function MapView({ onParcelSelect }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [planche, setPlanche] = useState(false);
   const [plancheOpacity, setPlancheOpacity] = useState(0.65);
-  // 4 coins du calage : west, east, south, north (lng, lng, lat, lat)
-  const [bbox, setBbox] = useState<{ W: number; E: number; S: number; N: number }>(() => {
+  const [aucZonage, setAucZonage] = useState(false);
+  const [aucStatus, setAucStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [aucCount, setAucCount] = useState(0);
+  const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
     if (stored) {
       try {
@@ -126,7 +150,7 @@ export function MapView({ onParcelSelect }: Props) {
         // fallthrough
       }
     }
-    return { W: -7.673, E: -7.566, S: 33.4685, N: 33.5843 };
+    return DEFAULT_BBOX;
   });
   const [calibrating, setCalibrating] = useState(false);
 
@@ -175,15 +199,15 @@ export function MapView({ onParcelSelect }: Props) {
 
     map.on("load", async () => {
       try {
-        // 0. Planche PAU d'Aïn Chock — overlay raster (cadrage ajustable, coins persistés)
+        // 0. Planche PAU d'Aïn Chock — overlay raster
         map.addSource("planche", {
           type: "image",
           url: "/data/ainchock/pau-planche.jpg",
           coordinates: [
-            [bbox.W, bbox.N], // top-left
-            [bbox.E, bbox.N], // top-right
-            [bbox.E, bbox.S], // bottom-right
-            [bbox.W, bbox.S], // bottom-left
+            [bbox.W, bbox.N],
+            [bbox.E, bbox.N],
+            [bbox.E, bbox.S],
+            [bbox.W, bbox.S],
           ],
         });
         map.addLayer({
@@ -193,7 +217,7 @@ export function MapView({ onParcelSelect }: Props) {
           paint: { "raster-opacity": 0, "raster-fade-duration": 0 },
         });
 
-        // 1. Périmètre administratif d'Aïn Chock (OSM)
+        // 1. Périmètre administratif (OSM)
         try {
           const perim = await fetch("/data/ainchock/perimetre.geojson").then((r) =>
             r.ok ? r.json() : null,
@@ -235,12 +259,47 @@ export function MapView({ onParcelSelect }: Props) {
           console.warn("[MapView] bâtiments indisponibles", e);
         }
 
-        // 3. Parcelles de démo (cliquables, par-dessus tout le reste)
-        map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
+        // 3. AUC Zonage (vide à l'init, peuplé à la demande via toggle + map idle)
+        map.addSource("auc-zonage", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
 
-        // Centre la carte sur les parcelles (avec un peu de marge) plutôt
-        // que sur le périmètre entier, sinon les parcelles ne sont pas
-        // visibles à l'œil nu et donc pas cliquables.
+        const aucColorExpr: maplibregl.ExpressionSpecification = [
+          "case",
+          ["==", ["slice", ["get", "secteur"], 0, 2], "PB"], ZONE_COLORS.PB!,
+          ["==", ["slice", ["get", "secteur"], 0, 2], "PU"], ZONE_COLORS.PU!,
+          ["==", ["slice", ["get", "secteur"], 0, 2], "ZR"], ZONE_COLORS.ZR!,
+          [
+            "match",
+            ["slice", ["get", "secteur"], 0, 1],
+            "A", ZONE_COLORS.A!,
+            "B", ZONE_COLORS.B!,
+            "C", ZONE_COLORS.C!,
+            "D", ZONE_COLORS.D!,
+            "E", ZONE_COLORS.E!,
+            "I", ZONE_COLORS.I!,
+            "S", ZONE_COLORS.S!,
+            "#888",
+          ],
+        ];
+        map.addLayer({
+          id: "auc-zonage-fill",
+          type: "fill",
+          source: "auc-zonage",
+          layout: { visibility: "none" },
+          paint: { "fill-color": aucColorExpr, "fill-opacity": 0.45 },
+        });
+        map.addLayer({
+          id: "auc-zonage-outline",
+          type: "line",
+          source: "auc-zonage",
+          layout: { visibility: "none" },
+          paint: { "line-color": "#000", "line-width": 0.6 },
+        });
+
+        // 4. Parcelles de démo (fallback quand AUC désactivé)
+        map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
         const parcelBounds = new maplibregl.LngLatBounds();
         for (const f of PARCELLES_DATA.features) {
           const g = f.geometry as GeoJSON.Polygon | undefined;
@@ -253,7 +312,6 @@ export function MapView({ onParcelSelect }: Props) {
           map.fitBounds(parcelBounds, { padding: 80, maxZoom: 17, duration: 0 });
         }
 
-        // famille = ["case", [== zone "PB"], "PB", [== zone "PU"], "PU", [slice zone 0 1]]
         const familleExpr: maplibregl.ExpressionSpecification = [
           "case",
           ["==", ["slice", ["get", "zone"], 0, 2], "PB"], "PB",
@@ -289,17 +347,38 @@ export function MapView({ onParcelSelect }: Props) {
           paint: { "line-color": "#fff", "line-width": 2 },
         });
 
+        // Click handlers
         map.on("click", "parcelles-fill", (e) => {
           const feature = e.features?.[0];
           if (!feature) return;
           onParcelSelect(feature.properties as ParcelleProperties);
         });
-        map.on("mouseenter", "parcelles-fill", () => {
-          map.getCanvas().style.cursor = "pointer";
+        map.on("click", "auc-zonage-fill", (e) => {
+          const feature = e.features?.[0];
+          if (!feature) return;
+          const a = feature.properties as Record<string, unknown>;
+          const secteur = String(a.secteur ?? "").trim();
+          if (!secteur) return;
+          const surface = typeof a.area === "number" ? Math.round(a.area as number) : 500;
+          const famille = familleOfSecteur(secteur);
+          onParcelSelect({
+            id: `AUC-${a.aucId ?? a.id ?? "?"}`,
+            adresse: `${a.commune ?? "Aïn Chock"} · secteur ${secteur}`,
+            zone: secteur,
+            surface,
+            prixTerrainMedianDhM2: PRIX_PAR_FAMILLE[famille] ?? 15000,
+          });
         });
-        map.on("mouseleave", "parcelles-fill", () => {
-          map.getCanvas().style.cursor = "";
-        });
+        const setPointer = (l: string) => {
+          map.on("mouseenter", l, () => {
+            map.getCanvas().style.cursor = "pointer";
+          });
+          map.on("mouseleave", l, () => {
+            map.getCanvas().style.cursor = "";
+          });
+        };
+        setPointer("parcelles-fill");
+        setPointer("auc-zonage-fill");
       } catch (e) {
         setError(String(e));
       }
@@ -318,15 +397,14 @@ export function MapView({ onParcelSelect }: Props) {
     };
   }, [onParcelSelect]);
 
-  // Synchronise l'opacité du calque planche avec l'état React
+  // Opacité planche
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getLayer("planche-layer")) return;
-    const op = planche ? plancheOpacity : 0;
-    map.setPaintProperty("planche-layer", "raster-opacity", op);
+    map.setPaintProperty("planche-layer", "raster-opacity", planche ? plancheOpacity : 0);
   }, [planche, plancheOpacity]);
 
-  // Met à jour les coins de la planche + persiste
+  // Coins planche
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -342,14 +420,87 @@ export function MapView({ onParcelSelect }: Props) {
     try {
       localStorage.setItem("planche-bbox", JSON.stringify(bbox));
     } catch {
-      // localStorage indisponible (mode privé) — ok
+      // localStorage indisponible
     }
   }, [bbox]);
+
+  // Visibilité du calque AUC Zonage + masquage des démos quand actif
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getLayer("auc-zonage-fill")) return;
+      const v = aucZonage ? "visible" : "none";
+      map.setLayoutProperty("auc-zonage-fill", "visibility", v);
+      map.setLayoutProperty("auc-zonage-outline", "visibility", v);
+      // On garde les parcelles démo visibles tant que AUC n'a pas livré.
+      if (map.getLayer("parcelles-fill")) {
+        const demoVis = aucZonage && aucCount > 0 ? "none" : "visible";
+        map.setLayoutProperty("parcelles-fill", "visibility", demoVis);
+        map.setLayoutProperty("parcelles-outline", "visibility", demoVis);
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("load", apply);
+  }, [aucZonage, aucCount]);
+
+  // Récupération des features AUC quand zonage actif et que la carte bouge
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !aucZonage) return;
+    let abort: AbortController | null = null;
+
+    const refresh = async () => {
+      const b = map.getBounds();
+      const aucBbox = {
+        W: b.getWest(),
+        E: b.getEast(),
+        S: b.getSouth(),
+        N: b.getNorth(),
+      };
+      abort?.abort();
+      abort = new AbortController();
+      setAucStatus("loading");
+      try {
+        const fc = await fetchZonage(aucBbox, abort.signal);
+        const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
+        if (src) src.setData(fc);
+        setAucCount(fc.features.length);
+        setAucStatus("ok");
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        console.warn("[MapView] AUC zonage fetch failed", e);
+        setAucStatus("error");
+      }
+    };
+
+    refresh();
+    map.on("moveend", refresh);
+    return () => {
+      abort?.abort();
+      map.off("moveend", refresh);
+    };
+  }, [aucZonage]);
 
   return (
     <>
       <div ref={containerRef} className="map" />
       <div className="map-toolbar">
+        <label className="map-toolbar-toggle">
+          <input
+            type="checkbox"
+            checked={aucZonage}
+            onChange={(e) => setAucZonage(e.target.checked)}
+          />
+          <span>Zonage AUC</span>
+        </label>
+        {aucZonage && (
+          <span className="auc-status">
+            {aucStatus === "loading" && "⏳ chargement…"}
+            {aucStatus === "ok" && `✓ ${aucCount} polygones`}
+            {aucStatus === "error" && "⚠ AUC indisponible"}
+          </span>
+        )}
         <label className="map-toolbar-toggle">
           <input
             type="checkbox"
