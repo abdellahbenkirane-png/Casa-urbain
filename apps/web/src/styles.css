@@ -32,29 +32,39 @@ body { background: var(--bg); color: var(--text); }
 }
 .map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-.map-error,
-.map-diag {
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+  .map-container {
+    flex: 0 0 55vh;
+    height: 55vh;
+    width: 100%;
+  }
+  .panel {
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .header h1 { font-size: 13px; }
+  .header p { font-size: 10px; }
+}
+
+.map-error {
   position: absolute;
+  bottom: 12px;
   left: 12px;
   background: rgba(22, 27, 34, 0.95);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 11px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 12px;
   padding: 8px 10px;
   border-radius: 6px;
   z-index: 10;
   pointer-events: none;
-  max-width: 70%;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.map-error {
-  bottom: 12px;
-  border-color: var(--danger);
-  color: var(--danger);
-}
-.map-diag {
-  top: 96px;
-  line-height: 1.5;
+  max-width: 80%;
 }
 
 .header {

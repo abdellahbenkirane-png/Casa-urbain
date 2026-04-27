@@ -18,19 +18,6 @@ export interface ParcelleProperties {
   prixTerrainMedianDhM2: number;
 }
 
-interface Diag {
-  containerW: number;
-  containerH: number;
-  canvasW: number;
-  canvasH: number;
-  canvasDisplay: string;
-  canvasOpacity: string;
-  zoom: number;
-  centerLng: number;
-  centerLat: number;
-  tilesLoaded: number;
-}
-
 const ZONE_COLORS: Record<string, string> = {
   SD1: "#2f81f7",
   SD2: "#58a6ff",
@@ -43,7 +30,6 @@ export function MapView({ onParcelSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [diag, setDiag] = useState<Diag | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -77,40 +63,14 @@ export function MapView({ onParcelSelect }: Props) {
       return;
     }
 
-    let tilesLoaded = 0;
-
-    const refreshDiag = () => {
-      if (!containerRef.current || !mapRef.current) return;
-      const c = containerRef.current;
-      const cv = c.querySelector(".maplibregl-canvas") as HTMLCanvasElement | null;
-      const r = cv?.getBoundingClientRect();
-      const cs = cv ? getComputedStyle(cv) : null;
-      const center = mapRef.current.getCenter();
-      setDiag({
-        containerW: c.clientWidth,
-        containerH: c.clientHeight,
-        canvasW: r?.width ?? 0,
-        canvasH: r?.height ?? 0,
-        canvasDisplay: cs?.display ?? "(no canvas)",
-        canvasOpacity: cs?.opacity ?? "—",
-        zoom: Number(mapRef.current.getZoom().toFixed(2)),
-        centerLng: Number(center.lng.toFixed(4)),
-        centerLat: Number(center.lat.toFixed(4)),
-        tilesLoaded,
-      });
-    };
-
     map.on("error", (e) => {
       const msg = e.error?.message ?? String(e);
-      setError(/Failed to fetch|NetworkError|blocked/i.test(msg)
-        ? "Tuiles bloquées — désactive bloqueurs/extensions et recharge."
-        : msg);
+      setError(
+        /Failed to fetch|NetworkError|blocked/i.test(msg)
+          ? "Tuiles bloquées — désactive bloqueurs/extensions et recharge."
+          : msg,
+      );
     });
-
-    map.on("dataloading", () => { tilesLoaded++; });
-    map.on("data", refreshDiag);
-    map.on("idle", refreshDiag);
-    map.on("moveend", refreshDiag);
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
@@ -167,13 +127,15 @@ export function MapView({ onParcelSelect }: Props) {
       } catch (e) {
         setError(String(e));
       }
-      refreshDiag();
     });
 
     const onResize = () => map.resize();
     window.addEventListener("resize", onResize);
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(containerRef.current);
 
     return () => {
+      ro.disconnect();
       window.removeEventListener("resize", onResize);
       map.remove();
       mapRef.current = null;
@@ -184,14 +146,6 @@ export function MapView({ onParcelSelect }: Props) {
     <>
       <div ref={containerRef} className="map" />
       {error && <div className="map-error">⚠ {error}</div>}
-      {diag && (
-        <div className="map-diag">
-          <div>Conteneur : {diag.containerW}×{diag.containerH}</div>
-          <div>Canvas : {Math.round(diag.canvasW)}×{Math.round(diag.canvasH)} ({diag.canvasDisplay}, op {diag.canvasOpacity})</div>
-          <div>Zoom : {diag.zoom} · Centre : {diag.centerLng}, {diag.centerLat}</div>
-          <div>Tuiles déclenchées : {diag.tilesLoaded}</div>
-        </div>
-      )}
     </>
   );
 }
