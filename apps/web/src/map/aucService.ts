@@ -101,14 +101,35 @@ function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
   return `${API_ROOT}?${params.toString()}`;
 }
 
-function ringsToPolygon(rings: number[][][]): GeoJSON.Polygon | GeoJSON.MultiPolygon {
-  // ESRI : 1er ring = extérieur ; suivants éventuels = trous (sens horaire)
-  // Pour rester simple on traite chaque ring comme un polygone séparé d'un MultiPolygon
-  // et on laisse MapLibre faire le rendu (pas critique à ce stade).
+// Inverse Mercator sphérique — converti EPSG:3857 → EPSG:4326.
+// Utile parce que karazal renvoie les rings en Web Mercator même quand
+// on demande outSR=4326 (paramètre ignoré côté serveur).
+const R_EARTH = 6378137;
+const RAD_TO_DEG = 180 / Math.PI;
+
+function mercToWgs84([x, y]: [number, number]): [number, number] {
+  const lng = (x / R_EARTH) * RAD_TO_DEG;
+  const lat = (2 * Math.atan(Math.exp(y / R_EARTH)) - Math.PI / 2) * RAD_TO_DEG;
+  return [lng, lat];
+}
+
+function isWebMercator(sr?: { wkid?: number; latestWkid?: number }): boolean {
+  if (!sr) return false;
+  const code = sr.latestWkid ?? sr.wkid;
+  return code === 3857 || code === 102100;
+}
+
+function ringsToPolygon(
+  rings: number[][][],
+  reprojectFromMerc: boolean,
+): GeoJSON.Polygon | GeoJSON.MultiPolygon {
+  const project = reprojectFromMerc
+    ? (ring: number[][]) => ring.map((p) => mercToWgs84([p[0]!, p[1]!]))
+    : (ring: number[][]) => ring.map((p) => [p[0]!, p[1]!] as [number, number]);
   if (rings.length === 1) {
-    return { type: "Polygon", coordinates: rings };
+    return { type: "Polygon", coordinates: [project(rings[0]!)] };
   }
-  return { type: "MultiPolygon", coordinates: rings.map((r) => [r]) };
+  return { type: "MultiPolygon", coordinates: rings.map((r) => [project(r)]) };
 }
 
 async function fetchLayerEsri(
@@ -153,6 +174,7 @@ function esriToGeojson<A>(
   data: EsriResponse,
   layerKey: AucLayer,
 ): GeoJSON.FeatureCollection {
+  const reproject = isWebMercator(data.spatialReference);
   const features: GeoJSON.Feature[] = [];
   for (const f of data.features ?? []) {
     const rings = f.geometry?.rings;
@@ -161,7 +183,7 @@ function esriToGeojson<A>(
     features.push({
       type: "Feature",
       properties: { ...(f.attributes as A), aucId: id, aucLayer: layerKey },
-      geometry: ringsToPolygon(rings),
+      geometry: ringsToPolygon(rings, reproject),
     });
   }
   return { type: "FeatureCollection", features };
