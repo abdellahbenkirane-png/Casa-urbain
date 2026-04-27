@@ -359,7 +359,11 @@ export function MapView({ onParcelSelect }: Props) {
           const a = feature.properties as Record<string, unknown>;
           const secteur = String(a.secteur ?? "").trim();
           if (!secteur) return;
-          const surface = typeof a.area === "number" ? Math.round(a.area as number) : 500;
+          // L'attribut `area` est la surface du polygone de zone (souvent
+          // plusieurs hectares — ce n'est PAS une parcelle individuelle).
+          // On part sur une parcelle type 500 m² que l'utilisateur ajustera
+          // dans le formulaire avec le m² réel de son terrain.
+          const surface = 500;
           const famille = familleOfSecteur(secteur);
           onParcelSelect({
             id: `AUC-${a.aucId ?? a.id ?? "?"}`,

@@ -23,7 +23,10 @@ export const AUC_LAYERS = {
 
 export type AucLayer = keyof typeof AUC_LAYERS;
 
-const API_ROOT = "https://e-auc.org/karazal/kgis/rest/featuresService/features";
+// Le client appelle notre proxy Vercel (apps/web/api/auc.js), qui relaie
+// au service AUC. Cela contourne les restrictions CORS observées en prod
+// quand on essaie d'attaquer e-auc.org directement depuis le navigateur.
+const API_ROOT = "/api/auc";
 
 export interface BBox4326 {
   W: number;
@@ -83,6 +86,7 @@ function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
     spatialReference: { wkid: 4326 },
   });
   const params = new URLSearchParams({
+    layer,
     f: "json",
     where: "1=1",
     outFields: fields.join(","),
@@ -94,7 +98,7 @@ function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
     returnGeometry: "true",
     returnExceededLimitFeatures: "true",
   });
-  return `${API_ROOT}/${layer}/all/1/query?${params.toString()}`;
+  return `${API_ROOT}?${params.toString()}`;
 }
 
 function ringsToPolygon(rings: number[][][]): GeoJSON.Polygon | GeoJSON.MultiPolygon {
