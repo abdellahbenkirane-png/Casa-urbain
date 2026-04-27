@@ -33,12 +33,13 @@ body { background: var(--bg); color: var(--text); }
 .map { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 @media (max-width: 768px) {
+  /* Layout : empilage vertical, carte 50 vh, panneau scrollable en dessous. */
   .layout {
     flex-direction: column;
   }
   .map-container {
-    flex: 0 0 55vh;
-    height: 55vh;
+    flex: 0 0 50vh;
+    height: 50vh;
     width: 100%;
   }
   .panel {
@@ -47,9 +48,72 @@ body { background: var(--bg); color: var(--text); }
     height: auto;
     border-left: 0;
     border-top: 1px solid var(--border);
+    padding: 14px;
   }
-  .header h1 { font-size: 13px; }
+  .header { padding: 8px 10px; max-width: 60%; }
+  .header h1 { font-size: 12px; }
   .header p { font-size: 10px; }
+
+  /* Toolbar carte : compacte + en haut à gauche en bas pour éviter le contrôle nav. */
+  .map-toolbar {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    padding: 6px 8px;
+    gap: 4px;
+    font-size: 11px;
+    max-width: calc(100vw - 24px);
+  }
+  .map-toolbar input[type="range"] {
+    width: 90px;
+  }
+  .auc-layer-edit input { width: 100px; }
+  .planche-calib {
+    top: auto;
+    bottom: 110px;
+    right: 12px;
+    width: 160px;
+  }
+
+  /* Simulateur : KPI 2 colonnes, formulaire 1 colonne, tabs scrollables. */
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .tab { flex: 0 0 auto; }
+  .sim-actions { flex-wrap: wrap; }
+
+  /* Tableaux : police plus petite, scroll horizontal si nécessaire. */
+  .row-table,
+  .compare-table,
+  .breakdown-table {
+    font-size: 10px;
+  }
+  .row-table input { font-size: 11px; padding: 3px 4px; }
+
+  /* Modal fiche : pleine largeur, header empilé. */
+  .modal-backdrop { padding: 0; }
+  .modal { border-radius: 0; height: 100%; max-height: 100vh; width: 100%; }
+  .modal-header {
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+  }
+  .modal-actions { justify-content: space-between; flex-wrap: wrap; }
+  .modal-footer { padding: 8px 12px; gap: 6px; }
+  .page-dots { flex-wrap: wrap; max-width: 60%; }
+}
+
+@media (max-width: 480px) {
+  .header h1 { font-size: 11px; }
+  .header { max-width: 70%; }
+  .panel { padding: 12px; }
+  .docs { padding: 10px; }
+  .kpi-value { font-size: 12px; }
+  .kpi.big .kpi-value { font-size: 14px; }
 }
 
 .map-error {
