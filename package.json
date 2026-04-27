@@ -1,0 +1,15 @@
+{
+  "name": "casa-urban",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm --workspace @casa/core run test",
+    "dev": "npm --workspace @casa/web run dev",
+    "build": "npm --workspaces --if-present run build"
+  }
+}

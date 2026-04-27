@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "source": "Plan d'Aménagement Unifié de Casablanca — à confirmer auprès de l'Agence Urbaine. Valeurs ci-dessous : ordres de grandeur indicatifs pour le MVP, à remplacer par le règlement officiel par zone homogène.",
+    "version": "MVP-stub-0.1"
+  },
+  "zones": {
+    "SD1": {
+      "code": "SD1",
+      "nom": "Secteur Diffus 1 — habitat continu R+4",
+      "description": "Zone d'habitat continu, immeubles collectifs, RDC commerce admis. Hauteur dominante R+4 + retrait.",
+      "usagesAutorises": ["habitat", "commerce RDC", "bureaux", "équipements de proximité"],
+      "usagesInterdits": ["industrie", "entrepôts"],
+      "parametres": {
+        "cos": 1.8,
+        "cus": 2.5,
+        "hauteurMaxM": 16,
+        "nombreEtagesMax": 5,
+        "retraitFacadeM": 0,
+        "retraitFondM": 3,
+        "emprisAuSolMaxPct": 0.7
+      }
+    },
+    "SD2": {
+      "code": "SD2",
+      "nom": "Secteur Diffus 2 — habitat continu R+3",
+      "description": "Habitat collectif, gabarit R+3 dominant.",
+      "usagesAutorises": ["habitat", "commerce RDC", "équipements"],
+      "usagesInterdits": ["industrie"],
+      "parametres": {
+        "cos": 1.5,
+        "cus": 2,
+        "hauteurMaxM": 13,
+        "nombreEtagesMax": 4,
+        "retraitFacadeM": 0,
+        "retraitFondM": 3,
+        "emprisAuSolMaxPct": 0.7
+      }
+    },
+    "ZH": {
+      "code": "ZH",
+      "nom": "Zone d'Habitat individuel",
+      "description": "Villas et habitat individuel, gabarit R+1 ou R+2.",
+      "usagesAutorises": ["habitat individuel"],
+      "usagesInterdits": ["commerce", "industrie", "habitat collectif"],
+      "parametres": {
+        "cos": 0.6,
+        "cus": 1,
+        "hauteurMaxM": 8.5,
+        "nombreEtagesMax": 2,
+        "retraitFacadeM": 4,
+        "retraitFondM": 4,
+        "emprisAuSolMaxPct": 0.5
+      }
+    },
+    "ZE": {
+      "code": "ZE",
+      "nom": "Zone d'Équipement",
+      "description": "Réservée aux équipements publics : écoles, hôpitaux, administrations.",
+      "usagesAutorises": ["équipements publics"],
+      "usagesInterdits": ["habitat", "commerce", "industrie"],
+      "parametres": {
+        "cos": 1,
+        "cus": 1.5,
+        "hauteurMaxM": 13,
+        "nombreEtagesMax": 4,
+        "retraitFacadeM": 5,
+        "retraitFondM": 5,
+        "emprisAuSolMaxPct": 0.6
+      }
+    },
+    "ZI": {
+      "code": "ZI",
+      "nom": "Zone Industrielle",
+      "description": "Activités industrielles et logistiques.",
+      "usagesAutorises": ["industrie", "logistique", "entrepôts"],
+      "usagesInterdits": ["habitat"],
+      "parametres": {
+        "cos": 0.8,
+        "cus": 1,
+        "hauteurMaxM": 12,
+        "nombreEtagesMax": 2,
+        "retraitFacadeM": 6,
+        "retraitFondM": 6,
+        "emprisAuSolMaxPct": 0.6
+      }
+    }
+  }
+}

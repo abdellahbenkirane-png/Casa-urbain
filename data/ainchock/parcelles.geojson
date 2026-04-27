@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "_meta": {
+    "note": "Parcelles de démonstration pour le MVP — coordonnées approximatives à Aïn Chock, Casablanca. À remplacer par les données SIG officielles de l'Agence Urbaine.",
+    "crs": "EPSG:4326"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "AC-DEMO-001",
+        "adresse": "Rue de démonstration, Aïn Chock",
+        "zone": "SD1",
+        "surface": 350,
+        "facade1": 14,
+        "facade2": 25,
+        "prixTerrainMedianDhM2": 23000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-7.55620, 33.54860],
+          [-7.55590, 33.54860],
+          [-7.55590, 33.54885],
+          [-7.55620, 33.54885],
+          [-7.55620, 33.54860]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "AC-DEMO-002",
+        "adresse": "Avenue de démonstration, Aïn Chock",
+        "zone": "SD2",
+        "surface": 480,
+        "facade1": 20,
+        "facade2": 24,
+        "prixTerrainMedianDhM2": 18000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-7.55540, 33.54900],
+          [-7.55500, 33.54900],
+          [-7.55500, 33.54925],
+          [-7.55540, 33.54925],
+          [-7.55540, 33.54900]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "AC-DEMO-003",
+        "adresse": "Lotissement de démonstration, Aïn Chock",
+        "zone": "ZH",
+        "surface": 220,
+        "facade1": 11,
+        "facade2": 20,
+        "prixTerrainMedianDhM2": 15000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-7.55700, 33.54830],
+          [-7.55678, 33.54830],
+          [-7.55678, 33.54850],
+          [-7.55700, 33.54850],
+          [-7.55700, 33.54830]
+        ]]
+      }
+    }
+  ]
+}
