@@ -3,22 +3,8 @@ import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard } from "./zoning/ZoneCard";
 import { SimulatorPanel } from "./simulator/SimulatorPanel";
 
-/**
- * Préfectures pour lesquelles on a intégré le règlement détaillé du PAU.
- * Pour les autres arrondissements, on affiche un avertissement et le simulateur
- * tourne avec les paramètres calés sur Aïn Chock (best-effort).
- */
-const REGLEMENT_DOCUMENTE = ["AIN CHOCK", "AÏN CHOCK"];
-
-function isReglementDocumente(prefecture?: string): boolean {
-  if (!prefecture) return true;
-  const p = prefecture.toUpperCase();
-  return REGLEMENT_DOCUMENTE.some((k) => p.includes(k));
-}
-
 export function App() {
   const [parcelle, setParcelle] = useState<ParcelleProperties | null>(null);
-  const docDispo = isReglementDocumente(parcelle?.prefecture);
 
   return (
     <div className="layout">
@@ -51,14 +37,6 @@ export function App() {
             </p>
             {parcelle.prefecture && (
               <p className="prefecture-line">📍 {parcelle.prefecture}</p>
-            )}
-            {!docDispo && (
-              <div className="reglement-warning">
-                ⚠️ Le règlement officiel intégré est celui d'<strong>Aïn Chock</strong>. Pour cet
-                arrondissement les paramètres réglementaires (COS, hauteurs, surfaces min…) sont
-                affichés à titre indicatif et doivent être validés contre le PAU local de la
-                préfecture.
-              </div>
             )}
             <ZoneCard parcelle={parcelle} />
             <SimulatorPanel parcelle={parcelle} />
