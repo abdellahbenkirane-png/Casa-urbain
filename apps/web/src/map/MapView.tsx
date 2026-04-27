@@ -291,17 +291,20 @@ export function MapView({ onParcelSelect }: Props) {
             "#e74c3c", // rouge — fallback debug pour repérer les secteurs non couverts
           ],
         ];
+        // Mode debug : couleur fixe pour vérifier que la layer rend les polygones.
+        // Une fois visible, on remplacera par aucColorExpr.
+        void aucColorExpr;
         map.addLayer({
           id: "auc-zonage-fill",
           type: "fill",
           source: "auc-zonage",
-          paint: { "fill-color": aucColorExpr, "fill-opacity": 0 },
+          paint: { "fill-color": "#e74c3c", "fill-opacity": 0.5 },
         });
         map.addLayer({
           id: "auc-zonage-outline",
           type: "line",
           source: "auc-zonage",
-          paint: { "line-color": "#000", "line-width": 0.6, "line-opacity": 0 },
+          paint: { "line-color": "#000", "line-width": 1.5 },
         });
 
         // 4. Parcelles de démo (fallback quand AUC désactivé)
@@ -434,26 +437,25 @@ export function MapView({ onParcelSelect }: Props) {
     }
   }, [bbox]);
 
-  // Toggle "Zonage AUC" : on joue sur l'opacité plutôt que sur la visibilité
-  // pour éviter les courses entre la création des layers (load) et le clic
-  // utilisateur (qui peut arriver avant ou après).
+  // Toggle "Zonage AUC". On retente jusqu'à ce que la layer existe.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    let retries = 0;
     const apply = () => {
-      if (!map.getLayer("auc-zonage-fill")) return;
-      const fillOpacity = aucZonage ? 0.55 : 0;
-      const lineOpacity = aucZonage ? 0.9 : 0;
-      map.setPaintProperty("auc-zonage-fill", "fill-opacity", fillOpacity);
-      map.setPaintProperty("auc-zonage-outline", "line-opacity", lineOpacity);
+      if (!map.getLayer("auc-zonage-fill")) {
+        if (retries++ < 50) setTimeout(apply, 100);
+        return;
+      }
+      console.log("[MapView] toggle AUC", { aucZonage, aucCount });
+      // Démos masquées dès qu'AUC est actif et a livré des features
       if (map.getLayer("parcelles-fill")) {
-        const demoVis = aucZonage && aucCount > 0 ? "none" : "visible";
-        map.setLayoutProperty("parcelles-fill", "visibility", demoVis);
-        map.setLayoutProperty("parcelles-outline", "visibility", demoVis);
+        const hide = aucZonage && aucCount > 0;
+        map.setPaintProperty("parcelles-fill", "fill-opacity", hide ? 0 : 0.7);
+        map.setPaintProperty("parcelles-outline", "line-opacity", hide ? 0 : 1);
       }
     };
-    if (map.loaded()) apply();
-    else map.once("load", apply);
+    apply();
   }, [aucZonage, aucCount]);
 
   // Récupération des features AUC quand zonage actif et que la carte bouge
