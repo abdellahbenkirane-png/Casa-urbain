@@ -240,6 +240,15 @@ export function MapView({ onParcelSelect }: Props) {
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+        showAccuracyCircle: true,
+        showUserLocation: true,
+      }),
+      "top-right",
+    );
 
     map.on("load", async () => {
       try {
