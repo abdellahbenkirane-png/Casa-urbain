@@ -490,7 +490,24 @@ body { background: var(--bg); color: var(--text); }
 }
 
 .parcel-title { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-.parcel-sub { color: var(--muted); font-size: 12px; margin: 0 0 16px; }
+.parcel-sub { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.prefecture-line {
+  font-size: 11px;
+  color: var(--accent);
+  margin: 0 0 14px;
+  font-weight: 500;
+}
+.reglement-warning {
+  background: rgba(210, 153, 34, 0.1);
+  border: 1px solid var(--warning);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 11px;
+  color: var(--warning);
+  line-height: 1.5;
+}
+.reglement-warning strong { color: var(--text); }
 
 .zone-card {
   background: var(--panel-2);

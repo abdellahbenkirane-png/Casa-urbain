@@ -17,6 +17,7 @@ export interface ParcelleProperties {
   facade1?: number;
   facade2?: number;
   prixTerrainMedianDhM2: number;
+  prefecture?: string;
 }
 
 // Couleur dérivée de la famille de zone (A, B, C, D, E, I, PB, PU, S, ZR).
@@ -221,8 +222,12 @@ export function MapView({ onParcelSelect }: Props) {
             { id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" } },
           ],
         },
-        center: [-7.585, 33.535],
-        zoom: 14,
+        // Casablanca centre — zoom assez large pour couvrir l'ensemble
+        // des arrondissements (Anfa, Aïn Chock, Ben M'Sick, Hay Hassani,
+        // Sidi Bernoussi, Aïn Sebaâ-Hay Mohammadi, Mers Sultan, Moulay
+        // Rachid, Casa-Anfa). L'utilisateur navigue librement à partir de là.
+        center: [-7.6, 33.575],
+        zoom: 12,
       });
       mapRef.current = map;
     } catch (e) {
@@ -349,18 +354,9 @@ export function MapView({ onParcelSelect }: Props) {
         });
 
         // 4. Parcelles de démo (fallback quand AUC désactivé)
+        // Pas de fitBounds : on conserve la vue Casablanca par défaut pour
+        // permettre la navigation libre entre arrondissements.
         map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
-        const parcelBounds = new maplibregl.LngLatBounds();
-        for (const f of PARCELLES_DATA.features) {
-          const g = f.geometry as GeoJSON.Polygon | undefined;
-          const coords = g?.coordinates?.[0];
-          if (Array.isArray(coords)) {
-            for (const [lng, lat] of coords) parcelBounds.extend([lng, lat]);
-          }
-        }
-        if (!parcelBounds.isEmpty()) {
-          map.fitBounds(parcelBounds, { padding: 80, maxZoom: 17, duration: 0 });
-        }
 
         const familleExpr: maplibregl.ExpressionSpecification = [
           "case",
@@ -442,17 +438,19 @@ export function MapView({ onParcelSelect }: Props) {
           const secteur = String(a.secteur ?? "").trim();
           if (!secteur) return;
           // L'attribut `area` est la surface du polygone de zone (souvent
-          // plusieurs hectares — ce n'est PAS une parcelle individuelle).
-          // On part sur une parcelle type 500 m² que l'utilisateur ajustera
-          // dans le formulaire avec le m² réel de son terrain.
+          // plusieurs hectares). Sur défaut on part d'une parcelle type
+          // 500 m² que l'utilisateur ajustera ensuite dans le formulaire.
           const surface = 500;
           const famille = familleOfSecteur(secteur);
+          const prefecture = String(a.prefecture ?? "").trim();
+          const commune = String(a.commune ?? "").trim();
           onParcelSelect({
             id: `AUC-${a.aucId ?? a.id ?? "?"}`,
-            adresse: `${a.commune ?? "Aïn Chock"} · secteur ${secteur}`,
+            adresse: `${commune || prefecture || "Casablanca"} · secteur ${secteur}`,
             zone: secteur,
             surface,
             prixTerrainMedianDhM2: PRIX_PAR_FAMILLE[famille] ?? 15000,
+            prefecture: prefecture || undefined,
           });
         });
         const setPointer = (l: string) => {
