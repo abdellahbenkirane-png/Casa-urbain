@@ -106,221 +106,76 @@ function buildPrintHtml(
   adv: ReturnType<typeof computeAdvancedMetrics>,
 ): string {
   const fmt = (n: number) => Math.round(n).toLocaleString("fr-FR") + " DH";
-  const pct = (n: number, d = 1) => (n * 100).toFixed(d) + " %";
-  const m2 = (n: number) => Math.round(n).toLocaleString("fr-FR") + " m²";
+  const pct = (n: number) => (n * 100).toFixed(1) + " %";
   const tri = adv.tri == null ? "—" : pct(adv.tri);
   const pm = adv.pointMortPrixApparts == null ? "—" : fmt(adv.pointMortPrixApparts);
   const profitable = result.totaux.resultatNet > 0;
 
   const ventesRows = result.ca.lignes
     .map(
-      (l) => `
-        <tr>
-          <td>${esc(l.libelle)}</td>
-          <td class="num">${m2(l.superficie)}</td>
-          <td class="num strong">${fmt(l.ca)}</td>
-        </tr>`,
+      (l) =>
+        `<tr><td>${esc(l.libelle)}</td><td>${l.superficie.toLocaleString("fr-FR")}</td><td>${fmt(l.ca)}</td></tr>`,
     )
     .join("");
 
-  const chargeRow = (label: string, val: number) => `
-    <tr><td>${esc(label)}</td><td class="num">${fmt(val)}</td></tr>`;
+  const chargeRow = (label: string, val: number) =>
+    `<tr><td>${esc(label)}</td><td>${fmt(val)}</td></tr>`;
 
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"/>
-<title>${esc(input.nom)} — Casa Urban</title>
-<style>
-  @page { size: A4; margin: 10mm 10mm; }
-  * { box-sizing: border-box; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #0f172a;
-    font-size: 8.5pt;
-    line-height: 1.35;
-    background: #fff;
-  }
-
-  .brand {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    border-bottom: 1.5px solid #0f172a;
-    padding-bottom: 5px;
-    margin-bottom: 8px;
-  }
-  .brand h1 { margin: 0; font-size: 15pt; font-weight: 700; letter-spacing: -0.3px; }
-  .brand .sub { font-size: 7.5pt; color: #64748b; margin-top: 1px; }
-  .brand-tag { text-align: right; font-size: 7.5pt; color: #64748b; }
-  .brand-tag strong { color: #0f172a; font-size: 9pt; }
-
-  .terrain-line {
-    background: #f8fafc;
-    border-left: 3px solid #2f81f7;
-    padding: 4px 8px;
-    margin-bottom: 8px;
-    font-size: 8pt;
-    color: #334155;
-  }
-  .terrain-line strong { color: #0f172a; }
-
-  .kpis {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
-    margin-bottom: 8px;
-  }
-  .kpi {
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    padding: 5px 7px;
-    background: #fff;
-    position: relative;
-    overflow: hidden;
-  }
-  .kpi::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: #cbd5e1;
-  }
-  .kpi.primary::before { background: ${profitable ? "#16a34a" : "#dc2626"}; }
-  .kpi.accent::before { background: #2f81f7; }
-  .kpi-label { font-size: 6.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; }
-  .kpi-value { font-size: 10.5pt; font-weight: 700; margin-top: 1px; color: #0f172a; }
-  .kpi.primary .kpi-value { color: ${profitable ? "#15803d" : "#b91c1c"}; }
-
-  h2 {
-    font-size: 8.5pt;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #0f172a;
-    border-bottom: 1px solid #cbd5e1;
-    padding-bottom: 2px;
-    margin: 8px 0 4px;
-  }
-
-  .columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
-
-  table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-  th, td { padding: 3px 6px; text-align: left; vertical-align: top; }
-  thead th {
-    background: #0f172a;
-    color: #fff;
-    font-weight: 600;
-    font-size: 7pt;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-  }
-  tbody tr { border-bottom: 1px solid #f1f5f9; }
-  tbody tr:nth-child(even) { background: #fafafa; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.strong { font-weight: 600; }
-
-  tr.section-total { background: #f1f5f9 !important; font-weight: 600; }
-  tr.section-total td { border-top: 1px solid #cbd5e1; }
-  tr.grand-total {
-    background: ${profitable ? "#dcfce7" : "#fee2e2"} !important;
-    font-weight: 700;
-    font-size: 9pt;
-  }
-  tr.grand-total td {
-    border-top: 1.5px solid ${profitable ? "#16a34a" : "#dc2626"};
-    color: ${profitable ? "#14532d" : "#7f1d1d"};
-  }
-
-  .footer {
-    margin-top: 8px;
-    padding-top: 4px;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    font-size: 7pt;
-    color: #94a3b8;
-  }
-</style></head><body>
-  <header class="brand">
-    <div>
-      <h1>${esc(input.nom)}</h1>
-      <div class="sub">Pro forma promoteur — Aïn Chock, Casablanca</div>
+  <title>${esc(input.nom)}</title>
+  <style>
+    * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111;padding:24px;font-size:12px;}
+    h1{font-size:20px;margin:0 0 8px;color:#0f172a;}
+    h2{font-size:14px;margin:18px 0 6px;color:#0f172a;border-bottom:2px solid #2f81f7;padding-bottom:2px;}
+    table{border-collapse:collapse;width:100%;margin-bottom:8px;}
+    td,th{padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:left;}
+    th{background:#0f172a;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:0.3px;}
+    td:last-child,th:last-child{text-align:right;font-variant-numeric:tabular-nums;}
+    tbody tr:nth-child(even){background:#fafafa;}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px;}
+    .kpi{border:1px solid #e5e7eb;padding:8px 10px;border-radius:6px;background:#fff;border-top:3px solid #cbd5e1;}
+    .kpi.primary{border-top-color:${profitable ? "#16a34a" : "#dc2626"};}
+    .kpi.accent{border-top-color:#2f81f7;}
+    .kpi-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.3px;}
+    .kpi-value{font-size:14px;font-weight:600;color:#0f172a;}
+    .kpi.primary .kpi-value{color:${profitable ? "#15803d" : "#b91c1c"};}
+    .terrain{background:#f8fafc;border-left:3px solid #2f81f7;padding:6px 12px;margin-bottom:6px;font-size:11px;}
+    tr.total{background:${profitable ? "#dcfce7" : "#fee2e2"};font-weight:700;}
+    tr.total td{border-top:2px solid ${profitable ? "#16a34a" : "#dc2626"};color:${profitable ? "#14532d" : "#7f1d1d"};}
+    .footer{font-size:9px;color:#94a3b8;margin-top:16px;border-top:1px solid #e5e7eb;padding-top:6px;display:flex;justify-content:space-between;}
+  </style></head><body>
+    <h1>${esc(input.nom)}</h1>
+    <div class="terrain">Terrain ${input.terrain.surface} m² · ${fmt(input.terrain.prixTerrainDhParM2)}/m² · ${input.terrain.nombreEtages} étages</div>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">CA HT</div><div class="kpi-value">${fmt(result.totaux.totalVentes)}</div></div>
+      <div class="kpi primary"><div class="kpi-label">Résultat net</div><div class="kpi-value">${fmt(result.totaux.resultatNet)}</div></div>
+      <div class="kpi accent"><div class="kpi-label">Marge nette</div><div class="kpi-value">${pct(result.totaux.margeNette)}</div></div>
+      <div class="kpi accent"><div class="kpi-label">ROE projet</div><div class="kpi-value">${pct(result.totaux.roe)}</div></div>
+      <div class="kpi accent"><div class="kpi-label">TRI</div><div class="kpi-value">${tri}</div></div>
+      <div class="kpi"><div class="kpi-label">Point mort apparts</div><div class="kpi-value">${pm}</div></div>
     </div>
-    <div class="brand-tag">
-      <strong>Casa Urban</strong><br/>
-      ${new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
-    </div>
-  </header>
-
-  <div class="terrain-line">
-    <strong>Terrain</strong> ${m2(input.terrain.surface)} · ${fmt(input.terrain.prixTerrainDhParM2)}/m² · RDC+${input.terrain.nombreEtages}${input.terrain.facade1 ? ` · façade ${input.terrain.facade1} m` : ""} · projet ${input.hypotheses.dureeProjetAnnees} ans
-  </div>
-
-  <section class="kpis">
-    <div class="kpi"><div class="kpi-label">CA HT</div><div class="kpi-value">${fmt(result.totaux.totalVentes)}</div></div>
-    <div class="kpi primary"><div class="kpi-label">Résultat net</div><div class="kpi-value">${fmt(result.totaux.resultatNet)}</div></div>
-    <div class="kpi accent"><div class="kpi-label">Marge nette</div><div class="kpi-value">${pct(result.totaux.margeNette)}</div></div>
-    <div class="kpi accent"><div class="kpi-label">ROE projet</div><div class="kpi-value">${pct(result.totaux.roe)}</div></div>
-    <div class="kpi accent"><div class="kpi-label">TRI</div><div class="kpi-value">${tri}</div></div>
-    <div class="kpi"><div class="kpi-label">Point mort apparts</div><div class="kpi-value">${pm}</div></div>
-  </section>
-
-  <h2>I · Ventes (CA HT)</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Libellé</th>
-        <th class="num">Surface</th>
-        <th class="num">CA HT</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${ventesRows}
-      <tr class="section-total">
-        <td>Total CA HT</td>
-        <td class="num">${m2(result.ca.superficieTotale)}</td>
-        <td class="num">${fmt(result.ca.total)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="columns">
-    <div>
-      <h2>II · Charges</h2>
-      <table>
-        <tbody>
-          ${chargeRow("Acquisition", result.acquisition.total)}
-          ${chargeRow("Autorisations", result.autorisations.total)}
-          ${chargeRow("Constructions", result.constructions.total)}
-          ${chargeRow("Charges financières", result.chargesFinancieres.total)}
-          ${chargeRow("Charges liées à la vente", result.chargesVente.total)}
-          ${chargeRow("IS", result.totaux.is)}
-        </tbody>
-      </table>
-    </div>
-    <div>
-      <h2>III · Synthèse</h2>
-      <table>
-        <tbody>
-          ${chargeRow("Total ventes", result.totaux.totalVentes)}
-          ${chargeRow("Total charges", result.totaux.totalCharges)}
-          <tr class="section-total"><td>EBIT</td><td class="num">${fmt(result.totaux.ebit)}</td></tr>
-          ${chargeRow("IS", result.totaux.is)}
-          <tr class="grand-total"><td>Résultat net</td><td class="num">${fmt(result.totaux.resultatNet)}</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <footer class="footer">
-    <span>Casa Urban — Simulateur d'investissement immobilier · Aïn Chock</span>
-    <span>Généré le ${new Date().toLocaleString("fr-FR")}</span>
-  </footer>
-
-</body></html>`;
+    <h2>I — Ventes</h2>
+    <table><thead><tr><th>Libellé</th><th>Surface</th><th>CA HT</th></tr></thead>
+    <tbody>${ventesRows}</tbody></table>
+    <h2>II — Charges</h2>
+    <table><tbody>
+      ${chargeRow("Acquisition", result.acquisition.total)}
+      ${chargeRow("Autorisations", result.autorisations.total)}
+      ${chargeRow("Constructions", result.constructions.total)}
+      ${chargeRow("Charges financières", result.chargesFinancieres.total)}
+      ${chargeRow("Charges liées à la vente", result.chargesVente.total)}
+      ${chargeRow("IS", result.totaux.is)}
+    </tbody></table>
+    <h2>III — Synthèse</h2>
+    <table><tbody>
+      ${chargeRow("Total ventes", result.totaux.totalVentes)}
+      ${chargeRow("Total charges", result.totaux.totalCharges)}
+      ${chargeRow("EBIT", result.totaux.ebit)}
+      <tr class="total"><td>Résultat net</td><td>${fmt(result.totaux.resultatNet)}</td></tr>
+    </tbody></table>
+    <div class="footer"><span>Casa Urban — Aïn Chock</span><span>Généré le ${new Date().toLocaleString("fr-FR")}</span></div>
+  </body></html>`;
 }
 
 function esc(s: string): string {
