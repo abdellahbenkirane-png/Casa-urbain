@@ -1,7 +1,7 @@
 {
   "type": "FeatureCollection",
   "_meta": {
-    "note": "Parcelles de démonstration avec codes du PAU homologué 2025. Coordonnées approximatives à Aïn Chock — à remplacer par le parcellaire SIG officiel quand disponible.",
+    "note": "Parcelles de démonstration cluster d'Aïn Chock. 6 parcelles ~50-60 m × 30-40 m disposées en grille 3×2. Codes du PAU homologué 2025. À remplacer par le parcellaire SIG officiel.",
     "crs": "EPSG:4326"
   },
   "features": [
@@ -9,7 +9,7 @@
       "type": "Feature",
       "properties": {
         "id": "AC-DEMO-001",
-        "adresse": "Rue de démonstration, secteur A",
+        "adresse": "Rue de démonstration 1, secteur A6",
         "zone": "A6",
         "surface": 480,
         "facade1": 18,
@@ -19,11 +19,11 @@
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [-7.5752, 33.5402],
-          [-7.5749, 33.5402],
-          [-7.5749, 33.5404],
-          [-7.5752, 33.5404],
-          [-7.5752, 33.5402]
+          [-7.5760, 33.5410],
+          [-7.5754, 33.5410],
+          [-7.5754, 33.5414],
+          [-7.5760, 33.5414],
+          [-7.5760, 33.5410]
         ]]
       }
     },
@@ -31,7 +31,7 @@
       "type": "Feature",
       "properties": {
         "id": "AC-DEMO-002",
-        "adresse": "Avenue de démonstration, secteur B5",
+        "adresse": "Rue de démonstration 2, secteur B5",
         "zone": "B5",
         "surface": 320,
         "facade1": 13,
@@ -41,11 +41,11 @@
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [-7.5740, 33.5408],
-          [-7.5736, 33.5408],
-          [-7.5736, 33.5410],
-          [-7.5740, 33.5410],
-          [-7.5740, 33.5408]
+          [-7.5752, 33.5410],
+          [-7.5746, 33.5410],
+          [-7.5746, 33.5414],
+          [-7.5752, 33.5414],
+          [-7.5752, 33.5410]
         ]]
       }
     },
@@ -53,7 +53,7 @@
       "type": "Feature",
       "properties": {
         "id": "AC-DEMO-003",
-        "adresse": "Lotissement de démonstration, secteur D3",
+        "adresse": "Rue de démonstration 3, secteur D3",
         "zone": "D3",
         "surface": 520,
         "facade1": 16,
@@ -63,11 +63,11 @@
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [-7.5760, 33.5395],
-          [-7.5758, 33.5395],
-          [-7.5758, 33.5397],
-          [-7.5760, 33.5397],
-          [-7.5760, 33.5395]
+          [-7.5744, 33.5410],
+          [-7.5738, 33.5410],
+          [-7.5738, 33.5414],
+          [-7.5744, 33.5414],
+          [-7.5744, 33.5410]
         ]]
       }
     },
@@ -75,7 +75,7 @@
       "type": "Feature",
       "properties": {
         "id": "AC-DEMO-004",
-        "adresse": "Boulevard de démonstration, secteur E2",
+        "adresse": "Rue de démonstration 4, secteur E2",
         "zone": "E2",
         "surface": 140,
         "facade1": 9,
@@ -85,11 +85,11 @@
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [-7.5715, 33.5390],
-          [-7.5713, 33.5390],
-          [-7.5713, 33.5392],
-          [-7.5715, 33.5392],
-          [-7.5715, 33.5390]
+          [-7.5760, 33.5404],
+          [-7.5754, 33.5404],
+          [-7.5754, 33.5408],
+          [-7.5760, 33.5408],
+          [-7.5760, 33.5404]
         ]]
       }
     },
@@ -107,11 +107,11 @@
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [-7.5780, 33.5378],
-          [-7.5778, 33.5378],
-          [-7.5778, 33.5380],
-          [-7.5780, 33.5380],
-          [-7.5780, 33.5378]
+          [-7.5752, 33.5404],
+          [-7.5746, 33.5404],
+          [-7.5746, 33.5408],
+          [-7.5752, 33.5408],
+          [-7.5752, 33.5404]
         ]]
       }
     },
@@ -129,11 +129,11 @@
       "geometry": {
         "type": "Polygon",
         "coordinates": [[
-          [-7.5670, 33.5350],
-          [-7.5664, 33.5350],
-          [-7.5664, 33.5354],
-          [-7.5670, 33.5354],
-          [-7.5670, 33.5350]
+          [-7.5744, 33.5404],
+          [-7.5738, 33.5404],
+          [-7.5738, 33.5408],
+          [-7.5744, 33.5408],
+          [-7.5744, 33.5404]
         ]]
       }
     }
