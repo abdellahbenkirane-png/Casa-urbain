@@ -48,14 +48,19 @@ export function MapView({ onParcelSelect }: Props) {
         style: {
           version: 8,
           sources: {
-            osm: {
+            base: {
               type: "raster",
-              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tiles: [
+                "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+                "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+                "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+              ],
               tileSize: 256,
-              attribution: "© OpenStreetMap contributors",
+              attribution:
+                "© OpenStreetMap contributors © CARTO",
             },
           },
-          layers: [{ id: "osm", type: "raster", source: "osm" }],
+          layers: [{ id: "base", type: "raster", source: "base" }],
         },
         center: [-7.585, 33.535],
         zoom: 14,
@@ -71,7 +76,21 @@ export function MapView({ onParcelSelect }: Props) {
 
     map.on("error", (e) => {
       console.error("[MapView] map error event", e);
-      setError(e.error?.message ?? String(e));
+      const msg = e.error?.message ?? String(e);
+      if (/Failed to fetch|NetworkError|blocked/i.test(msg)) {
+        setError(
+          "Tuiles bloquées (probablement par un bloqueur de pubs). Désactive-le sur ce site et recharge.",
+        );
+      } else {
+        setError(msg);
+      }
+    });
+
+    map.on("data", (e) => {
+      const ev = e as { dataType?: string; isSourceLoaded?: boolean; sourceId?: string };
+      if (ev.dataType === "source" && ev.isSourceLoaded) {
+        console.log(`[MapView] source loaded: ${ev.sourceId}`);
+      }
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
