@@ -55,8 +55,8 @@ export function MapView({ onParcelSelect }: Props) {
           },
           layers: [{ id: "osm", type: "raster", source: "osm" }],
         },
-        center: [-7.5559, 33.5487],
-        zoom: 16,
+        center: [-7.585, 33.535],
+        zoom: 14,
       });
       mapRef.current = map;
       setStatus("constructed");
@@ -80,6 +80,17 @@ export function MapView({ onParcelSelect }: Props) {
       try {
         const data = await fetch(parcelles).then((r) => r.json());
         map.addSource("parcelles", { type: "geojson", data });
+
+        const bounds = new maplibregl.LngLatBounds();
+        for (const f of data.features ?? []) {
+          const coords = f.geometry?.coordinates?.[0];
+          if (Array.isArray(coords)) {
+            for (const [lng, lat] of coords) bounds.extend([lng, lat]);
+          }
+        }
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds, { padding: 80, maxZoom: 17, duration: 0 });
+        }
 
         const matchExpr: maplibregl.ExpressionSpecification = [
           "match",
