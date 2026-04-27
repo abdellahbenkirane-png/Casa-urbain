@@ -23,7 +23,14 @@ export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
 
   const p = zone.parametres;
   const rows: { label: string; value: string }[] = [];
-  if (p.cos != null) rows.push({ label: "COS", value: fmtCos(p.cos) });
+  if (p.cos != null) {
+    const niveaux = (p.nombreEtagesMax ?? 0) + 1;
+    const cosTotal = p.cos * niveaux;
+    rows.push({
+      label: "COS / étage",
+      value: `${fmtCos(p.cos)} (total ${fmtCos(cosTotal)})`,
+    });
+  }
   if (p.cus != null) rows.push({ label: "CUS", value: fmtPct(p.cus) });
   if (p.hauteurMaxM != null)
     rows.push({

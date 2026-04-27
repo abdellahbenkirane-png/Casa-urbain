@@ -2,7 +2,13 @@
   "_meta": {
     "source": "Plan d'Aménagement de l'Arrondissement d'Aïn Chock — Agence Urbaine de Casablanca, homologué 2025. Règlement extrait des fiches officielles (ZONE-A à ZONE-ZR + RG-39).",
     "version": "PAU-AIN-CHOCK-HOMOLOGUE-2025",
-    "extracted": "2026-04-27"
+    "extracted": "2026-04-27",
+    "conventions": {
+      "cos": "Coefficient d'Occupation du Sol — exprimé PAR ÉTAGE dans le règlement marocain. Surface plancher totale max = cos × (RDC + nombreEtagesMax).",
+      "cus": "Coefficient d'Utilisation du Sol — emprise au sol max / surface terrain.",
+      "hauteurMaxM": "Hauteur maximale absolue du bâtiment en mètres.",
+      "nombreEtagesMax": "Nombre d'étages au-dessus du RDC."
+    }
   },
   "zones": {
     "A6": {

@@ -17,11 +17,14 @@ import type { ParcelleProperties } from "../map/MapView";
  */
 export function buildInitialScenario(parcelle: ParcelleProperties): SimulationInput {
   const zone = getZone(parcelle.zone);
-  const cos = zone?.parametres.cos ?? null;
+  const cosParEtage = zone?.parametres.cos ?? null;
   const etagesMax = zone?.parametres.nombreEtagesMax ?? 4;
   const etagesEffectifs = etagesMax > 0 ? etagesMax : 4;
-  // Si COS non fixé, on retombe sur un ratio raisonnable basé sur les étages
-  const surfacePlancher = parcelle.surface * (cos ?? Math.max(1, etagesEffectifs * 0.5));
+  const niveaux = etagesEffectifs + 1; // RDC + étages
+  // COS du PAU est par étage : surface plancher totale = cos × niveaux × terrain.
+  // Si COS non fixé, on retombe sur un ratio raisonnable basé sur les étages.
+  const cosTotal = cosParEtage != null ? cosParEtage * niveaux : Math.max(1, niveaux * 0.6);
+  const surfacePlancher = parcelle.surface * cosTotal;
   const surfaceVendable = surfacePlancher * 0.85;
 
   // 30 % de la surface vendable en commerce RDC max, plafonné à la surface au sol

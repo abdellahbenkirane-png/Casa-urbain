@@ -56,27 +56,31 @@ export function validate(input: SimulationInput, zoneCode: string): Violation[] 
     });
   }
 
-  // COS = surface plancher totale / surface terrain
+  // COS = coefficient d'occupation du sol PAR ÉTAGE.
+  // Plafond total = cos × (RDC + nombreEtagesMax). On compare la surface
+  // plancher cumulée à ce plafond.
   if (p.cos != null && t.surface > 0) {
+    const niveaux = (p.nombreEtagesMax ?? 0) + 1; // RDC + étages
+    const cosMaxTotal = p.cos * niveaux;
     const surfacePlancher = input.constructions.reduce(
       (acc, c) => acc + c.superficieConstruite,
       0,
     );
     const cosActuel = surfacePlancher / t.surface;
-    if (cosActuel > p.cos * 1.05) {
+    if (cosActuel > cosMaxTotal * 1.05) {
       v.push({
         severity: "error",
         field: "constructions",
-        message: `COS dépassé : ${cosActuel.toFixed(2)} > ${p.cos.toFixed(2)} (surface plancher ${Math.round(surfacePlancher)} m² sur terrain ${t.surface} m²)`,
-        ruleValue: p.cos,
+        message: `COS total dépassé : ${cosActuel.toFixed(2)} > ${cosMaxTotal.toFixed(2)} (COS ${p.cos.toFixed(2)}/étage × ${niveaux} niveaux ; surface plancher ${Math.round(surfacePlancher)} m² sur terrain ${t.surface} m²)`,
+        ruleValue: cosMaxTotal,
         actualValue: cosActuel,
       });
-    } else if (cosActuel > p.cos) {
+    } else if (cosActuel > cosMaxTotal) {
       v.push({
         severity: "warning",
         field: "constructions",
-        message: `COS limite : ${cosActuel.toFixed(2)} ≈ max ${p.cos.toFixed(2)}`,
-        ruleValue: p.cos,
+        message: `COS total limite : ${cosActuel.toFixed(2)} ≈ max ${cosMaxTotal.toFixed(2)} (COS ${p.cos.toFixed(2)}/étage × ${niveaux})`,
+        ruleValue: cosMaxTotal,
         actualValue: cosActuel,
       });
     }
@@ -104,5 +108,6 @@ export function validate(input: SimulationInput, zoneCode: string): Violation[] 
 
 export function maxSurfacePlancher(zone: Zone | undefined, surfaceTerrain: number): number | null {
   if (!zone?.parametres.cos || surfaceTerrain <= 0) return null;
-  return zone.parametres.cos * surfaceTerrain;
+  const niveaux = (zone.parametres.nombreEtagesMax ?? 0) + 1;
+  return zone.parametres.cos * niveaux * surfaceTerrain;
 }
