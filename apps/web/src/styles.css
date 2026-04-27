@@ -38,8 +38,8 @@ body { background: var(--bg); color: var(--text); }
     flex-direction: column;
   }
   .map-container {
-    flex: 0 0 50vh;
-    height: 50vh;
+    flex: 0 0 55vh;
+    height: 55vh;
     width: 100%;
   }
   .panel {
@@ -50,27 +50,43 @@ body { background: var(--bg); color: var(--text); }
     border-top: 1px solid var(--border);
     padding: 14px;
   }
-  .header { padding: 8px 10px; max-width: 60%; }
-  .header h1 { font-size: 12px; }
-  .header p { font-size: 10px; }
 
-  /* Toolbar carte : compacte + en haut à gauche en bas pour éviter le contrôle nav. */
+  /* En-tête : compact, sans sous-titre. Laisse de la place au bouton menu. */
+  .header { padding: 6px 8px; max-width: 50%; }
+  .header h1 { font-size: 11px; line-height: 1.2; }
+  .header p { display: none; }
+
+  /* Bouton hamburger : visible, ouvre/ferme la toolbar. */
+  .menu-btn { display: block; }
+
+  /* Toolbar : cachée par défaut. S'affiche en dessous du bouton quand ouverte. */
   .map-toolbar {
-    top: auto;
-    bottom: 12px;
+    top: 56px;
     right: 12px;
-    padding: 6px 8px;
-    gap: 4px;
+    bottom: auto;
+    padding: 8px 10px;
+    gap: 6px;
     font-size: 11px;
     max-width: calc(100vw - 24px);
+    max-height: calc(55vh - 80px);
+    overflow-y: auto;
+    transform: scale(0.92) translateY(-8px);
+    transform-origin: top right;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease, transform 150ms ease;
   }
-  .map-toolbar input[type="range"] {
-    width: 90px;
+  .map-toolbar.is-open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
   }
+  .map-toolbar input[type="range"] { width: 90px; }
   .auc-layer-edit input { width: 100px; }
+
   .planche-calib {
     top: auto;
-    bottom: 110px;
+    bottom: 12px;
     right: 12px;
     width: 160px;
   }
@@ -288,6 +304,24 @@ body { background: var(--bg); color: var(--text); }
   gap: 8px;
   font-size: 12px;
 }
+
+.menu-btn {
+  display: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 11;
+  background: rgba(22, 27, 34, 0.95);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.menu-btn:active { background: var(--panel-2); }
 .map-toolbar-toggle {
   display: flex;
   align-items: center;

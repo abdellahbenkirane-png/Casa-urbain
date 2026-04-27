@@ -171,6 +171,9 @@ export function MapView({ onParcelSelect }: Props) {
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const [drawArea, setDrawArea] = useState<number | null>(null);
   const [drawFinalized, setDrawFinalized] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(
+    typeof window === "undefined" ? true : window.innerWidth > 768,
+  );
   const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
     if (stored) {
@@ -700,7 +703,14 @@ export function MapView({ onParcelSelect }: Props) {
   return (
     <>
       <div ref={containerRef} className="map" />
-      <div className="map-toolbar">
+      <button
+        className="menu-btn"
+        onClick={() => setMenuOpen((o) => !o)}
+        aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
+      >
+        {menuOpen ? "✕" : "☰"} Calques
+      </button>
+      <div className={`map-toolbar ${menuOpen ? "is-open" : ""}`}>
         <label className="map-toolbar-toggle">
           <input
             type="checkbox"
