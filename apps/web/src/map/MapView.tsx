@@ -206,21 +206,6 @@ export function MapView({ onParcelSelect }: Props) {
               source: "perimetre",
               paint: { "line-color": "#2f81f7", "line-width": 2, "line-dasharray": [3, 2] },
             });
-            const bounds = new maplibregl.LngLatBounds();
-            for (const f of perim.features ?? []) {
-              const geom = f.geometry;
-              const polys =
-                geom.type === "Polygon"
-                  ? [geom.coordinates]
-                  : geom.type === "MultiPolygon"
-                    ? geom.coordinates
-                    : [];
-              for (const poly of polys)
-                for (const ring of poly) for (const [lng, lat] of ring) bounds.extend([lng, lat]);
-            }
-            if (!bounds.isEmpty()) {
-              map.fitBounds(bounds, { padding: 30, duration: 0 });
-            }
           }
         } catch (e) {
           console.warn("[MapView] périmètre indisponible", e);
@@ -252,6 +237,21 @@ export function MapView({ onParcelSelect }: Props) {
 
         // 3. Parcelles de démo (cliquables, par-dessus tout le reste)
         map.addSource("parcelles", { type: "geojson", data: PARCELLES_DATA });
+
+        // Centre la carte sur les parcelles (avec un peu de marge) plutôt
+        // que sur le périmètre entier, sinon les parcelles ne sont pas
+        // visibles à l'œil nu et donc pas cliquables.
+        const parcelBounds = new maplibregl.LngLatBounds();
+        for (const f of PARCELLES_DATA.features) {
+          const g = f.geometry as GeoJSON.Polygon | undefined;
+          const coords = g?.coordinates?.[0];
+          if (Array.isArray(coords)) {
+            for (const [lng, lat] of coords) parcelBounds.extend([lng, lat]);
+          }
+        }
+        if (!parcelBounds.isEmpty()) {
+          map.fitBounds(parcelBounds, { padding: 80, maxZoom: 17, duration: 0 });
+        }
 
         // famille = ["case", [== zone "PB"], "PB", [== zone "PU"], "PU", [slice zone 0 1]]
         const familleExpr: maplibregl.ExpressionSpecification = [
