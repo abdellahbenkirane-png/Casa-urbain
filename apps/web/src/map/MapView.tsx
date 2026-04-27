@@ -143,6 +143,7 @@ export function MapView({ onParcelSelect }: Props) {
   const [aucCount, setAucCount] = useState(0);
   const [layerInput, setLayerInput] = useState(AUC_LAYERS.zonage);
   const [layerEditing, setLayerEditing] = useState(false);
+  const [satellite, setSatellite] = useState(false);
   const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
     if (stored) {
@@ -176,8 +177,19 @@ export function MapView({ onParcelSelect }: Props) {
               tileSize: 256,
               attribution: "© OpenStreetMap contributors © CARTO",
             },
+            satellite: {
+              type: "raster",
+              tiles: [
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+              ],
+              tileSize: 256,
+              attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, GIS User Community",
+            },
           },
-          layers: [{ id: "base", type: "raster", source: "base" }],
+          layers: [
+            { id: "base", type: "raster", source: "base" },
+            { id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" } },
+          ],
         },
         center: [-7.585, 33.535],
         zoom: 14,
@@ -407,6 +419,19 @@ export function MapView({ onParcelSelect }: Props) {
     map.setPaintProperty("planche-layer", "raster-opacity", planche ? plancheOpacity : 0);
   }, [planche, plancheOpacity]);
 
+  // Bascule fond carto / satellite
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getLayer("base") || !map.getLayer("satellite")) return;
+      map.setLayoutProperty("base", "visibility", satellite ? "none" : "visible");
+      map.setLayoutProperty("satellite", "visibility", satellite ? "visible" : "none");
+    };
+    if (map.loaded()) apply();
+    else map.once("load", apply);
+  }, [satellite]);
+
   // Coins planche
   useEffect(() => {
     const map = mapRef.current;
@@ -504,6 +529,14 @@ export function MapView({ onParcelSelect }: Props) {
     <>
       <div ref={containerRef} className="map" />
       <div className="map-toolbar">
+        <label className="map-toolbar-toggle">
+          <input
+            type="checkbox"
+            checked={satellite}
+            onChange={(e) => setSatellite(e.target.checked)}
+          />
+          <span>Satellite</span>
+        </label>
         <label className="map-toolbar-toggle">
           <input
             type="checkbox"
