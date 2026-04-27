@@ -464,6 +464,31 @@ export function MapView({ onParcelSelect }: Props) {
     if (!map || !aucZonage) return;
     let abort: AbortController | null = null;
 
+    const setSourceData = (fc: GeoJSON.FeatureCollection, retries = 0) => {
+      const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
+      if (!src) {
+        if (retries < 50) {
+          setTimeout(() => setSourceData(fc, retries + 1), 100);
+          return;
+        }
+        console.warn("[MapView] AUC source jamais créée — abandon");
+        return;
+      }
+      src.setData(fc);
+      const sample =
+        fc.features[0]?.geometry?.type === "Polygon"
+          ? (fc.features[0].geometry as GeoJSON.Polygon).coordinates[0]?.[0]
+          : null;
+      console.log(
+        "[MapView] AUC setData",
+        fc.features.length,
+        "1er secteur:",
+        fc.features[0]?.properties?.secteur,
+        "1er coord:",
+        sample,
+      );
+    };
+
     const refresh = async () => {
       const b = map.getBounds();
       const aucBbox = {
@@ -477,8 +502,7 @@ export function MapView({ onParcelSelect }: Props) {
       setAucStatus("loading");
       try {
         const fc = await fetchZonage(aucBbox, abort.signal);
-        const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
-        if (src) src.setData(fc);
+        setSourceData(fc);
         setAucCount(fc.features.length);
         setAucStatus("ok");
       } catch (e) {
