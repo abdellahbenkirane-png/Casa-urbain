@@ -236,6 +236,8 @@ export function MapView({ onParcelSelect }: Props) {
                 "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
               ],
               tileSize: 256,
+              minzoom: 0,
+              maxzoom: 19,
               attribution: "© OpenStreetMap contributors © CARTO",
             },
             satellite: {
@@ -244,7 +246,14 @@ export function MapView({ onParcelSelect }: Props) {
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
               ],
               tileSize: 256,
-              attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, GIS User Community",
+              minzoom: 0,
+              // Esri World Imagery couvre Casablanca jusqu'à z=19. Au-delà
+              // MapLibre upscale automatiquement la tuile z=19 (donc image
+              // pixellisée mais visible) au lieu d'essayer de fetcher des
+              // tuiles inexistantes (404 → écran blanc).
+              maxzoom: 19,
+              attribution:
+                "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN, GIS User Community",
             },
           },
           layers: [
