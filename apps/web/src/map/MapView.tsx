@@ -177,6 +177,24 @@ export function MapView({ onParcelSelect }: Props) {
   const [menuOpen, setMenuOpen] = useState(
     typeof window === "undefined" ? true : window.innerWidth > 768,
   );
+  // Si l'utilisateur retourne son téléphone (portrait → paysage) ou
+  // redimensionne sa fenêtre, on remet l'état du menu cohérent avec la
+  // largeur courante. Ne touche pas à l'état si l'utilisateur a déjà
+  // explicitement ouvert/fermé sur la même largeur.
+  const lastBreakpointRef = useRef<"narrow" | "wide" | null>(null);
+  useEffect(() => {
+    const sync = () => {
+      const wide = window.innerWidth > 768;
+      const next = wide ? "wide" : "narrow";
+      if (lastBreakpointRef.current !== next) {
+        lastBreakpointRef.current = next;
+        setMenuOpen(wide);
+      }
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
   const [showBuildings, setShowBuildings] = useState(false);
   const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
@@ -497,14 +515,23 @@ export function MapView({ onParcelSelect }: Props) {
   }, [planche, plancheOpacity]);
 
   // Toggle bâtiments OSM : fetch paresseux + opacités.
+  // L'état "déjà téléchargé" est suivi via un ref plutôt que les internals
+  // MapLibre — robuste aux mises à jour de la lib.
+  const buildingsLoadedRef = useRef(false);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     let cancelled = false;
+    const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+
     const apply = async () => {
       if (cancelled) return;
       if (!map.getLayer("buildings-fill")) {
-        setTimeout(apply, 100);
+        const t = setTimeout(() => {
+          pendingTimers.delete(t);
+          apply();
+        }, 100);
+        pendingTimers.add(t);
         return;
       }
       if (!showBuildings) {
@@ -512,15 +539,17 @@ export function MapView({ onParcelSelect }: Props) {
         map.setPaintProperty("buildings-outline", "line-opacity", 0);
         return;
       }
-      const src = map.getSource("buildings") as maplibregl.GeoJSONSource | undefined;
-      const data = (src as unknown as { _data?: GeoJSON.FeatureCollection })._data;
-      if (!data || !data.features?.length) {
+      if (!buildingsLoadedRef.current) {
         try {
           const fc = await fetch("/data/ainchock/buildings.geojson").then((r) =>
             r.ok ? r.json() : null,
           );
           if (cancelled) return;
-          if (fc && src) src.setData(fc);
+          const src = map.getSource("buildings") as maplibregl.GeoJSONSource | undefined;
+          if (fc && src) {
+            src.setData(fc);
+            buildingsLoadedRef.current = true;
+          }
         } catch (e) {
           console.warn("[MapView] bâtiments indisponibles", e);
           return;
@@ -532,6 +561,8 @@ export function MapView({ onParcelSelect }: Props) {
     apply();
     return () => {
       cancelled = true;
+      for (const t of pendingTimers) clearTimeout(t);
+      pendingTimers.clear();
     };
   }, [showBuildings]);
 
