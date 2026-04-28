@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MlMap } from "maplibre-gl";
 import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
-import { fetchZonage, setZonageLayerId, AUC_LAYERS } from "./aucService";
+import { fetchZonage } from "./aucService";
 import { SearchBar } from "./SearchBar";
 
 const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
@@ -166,9 +166,9 @@ export function MapView({ onParcelSelect }: Props) {
   const [aucZonage, setAucZonage] = useState(true);
   const [aucStatus, setAucStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [aucCount, setAucCount] = useState(0);
-  const [layerInput, setLayerInput] = useState(AUC_LAYERS.zonage);
-  const [layerEditing, setLayerEditing] = useState(false);
-  const [layerVersion, setLayerVersion] = useState(0);
+  // Reste possible de surcharger le layer-id via
+  // localStorage.setItem("auc-zonage-layer-id", "Layer-XXXXXX") en console,
+  // utile pour debug. Pas exposé dans l'UI : le bon ID est connu.
   const [satellite, setSatellite] = useState(true);
   const [drawMode, setDrawMode] = useState(false);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
@@ -840,7 +840,7 @@ export function MapView({ onParcelSelect }: Props) {
       for (const t of pendingTimers) clearTimeout(t);
       pendingTimers.clear();
     };
-  }, [aucZonage, layerVersion]);
+  }, [aucZonage]);
 
   return (
     <>
@@ -871,39 +871,11 @@ export function MapView({ onParcelSelect }: Props) {
           <span>Zonage AUC</span>
         </label>
         {aucZonage && (
-          <>
-            <span className="auc-status">
-              {aucStatus === "loading" && "⏳ chargement…"}
-              {aucStatus === "ok" && `✓ ${aucCount} polygones`}
-              {aucStatus === "error" && "⚠ AUC indisponible"}
-            </span>
-            <button className="btn-mini" onClick={() => setLayerEditing((v) => !v)}>
-              {layerEditing ? "Fermer" : "Layer-ID"}
-            </button>
-            {layerEditing && (
-              <div className="auc-layer-edit">
-                <input
-                  type="text"
-                  value={layerInput}
-                  onChange={(e) => setLayerInput(e.target.value)}
-                  placeholder="Layer-XXXXXX"
-                />
-                <button
-                  className="btn-mini"
-                  onClick={() => {
-                    setZonageLayerId(layerInput);
-                    // Force le useEffect de refetch à se ré-exécuter avec
-                    // le nouveau Layer-ID — sans recharger la page (donc
-                    // sans perdre les scénarios non sauvegardés).
-                    setLayerVersion((v) => v + 1);
-                    setLayerEditing(false);
-                  }}
-                >
-                  Appliquer
-                </button>
-              </div>
-            )}
-          </>
+          <span className="auc-status">
+            {aucStatus === "loading" && "⏳ chargement…"}
+            {aucStatus === "ok" && `✓ ${aucCount} polygones`}
+            {aucStatus === "error" && "⚠ AUC indisponible"}
+          </span>
         )}
         <label className="map-toolbar-toggle">
           <input
