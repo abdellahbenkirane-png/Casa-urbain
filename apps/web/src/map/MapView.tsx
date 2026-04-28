@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import maplibregl, { Map as MlMap } from "maplibre-gl";
 import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
 import { fetchZonage, setZonageLayerId, AUC_LAYERS } from "./aucService";
+import { SearchBar } from "./SearchBar";
 
 const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
 
@@ -710,6 +711,7 @@ export function MapView({ onParcelSelect }: Props) {
   return (
     <>
       <div ref={containerRef} className="map" />
+      <SearchBar getMap={() => mapRef.current} />
       <button
         className="menu-btn"
         onClick={() => setMenuOpen((o) => !o)}

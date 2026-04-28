@@ -59,6 +59,17 @@ body { background: var(--bg); color: var(--text); }
   /* Bouton hamburger : visible, ouvre/ferme la toolbar. */
   .menu-btn { display: block; }
 
+  /* SearchBar : pleine largeur sous le titre, à gauche du bouton menu. */
+  .search {
+    top: 56px;
+    left: 12px;
+    right: 12px;
+    transform: none;
+    width: auto;
+  }
+  .search-input-wrapper { height: 36px; }
+  .search-results { max-height: 240px; }
+
   /* Toolbar : cachée par défaut. S'affiche en dessous du bouton quand ouverte. */
   .map-toolbar {
     top: 56px;
@@ -322,6 +333,87 @@ body { background: var(--bg); color: var(--text); }
   cursor: pointer;
 }
 .menu-btn:active { background: var(--panel-2); }
+
+/* === SearchBar === */
+.search {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 220px));
+  z-index: 12;
+}
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(22, 27, 34, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 8px;
+  height: 38px;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.search-input-wrapper:focus-within {
+  border-color: var(--accent);
+}
+.search-icon { font-size: 12px; color: var(--muted); }
+.search input[type="search"] {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 0;
+  outline: none;
+  min-width: 0;
+}
+.search input[type="search"]::placeholder { color: var(--muted); }
+.search input[type="search"]::-webkit-search-cancel-button { display: none; }
+.search-clear {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.search-clear:hover { color: var(--text); background: var(--panel-2); }
+.search-spinner { font-size: 12px; }
+.search-results {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  background: rgba(22, 27, 34, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.search-results li {
+  padding: 8px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.search-results li:hover,
+.search-results li.active {
+  background: var(--panel-2);
+}
+.search-results li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.search-results li span {
+  color: var(--muted);
+  font-size: 10px;
+}
 .map-toolbar-toggle {
   display: flex;
   align-items: center;
