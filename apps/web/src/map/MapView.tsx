@@ -267,6 +267,10 @@ export function MapView({ onParcelSelect }: Props) {
         // Rachid, Casa-Anfa). L'utilisateur navigue librement à partir de là.
         center: [-7.6, 33.575],
         zoom: 12,
+        // Cap au niveau où les tuiles Esri / CARTO sont encore servies.
+        // Au-delà l'image disparaîtrait ; on bloque plutôt que d'afficher
+        // une tuile pixellisée.
+        maxZoom: 19,
       });
       mapRef.current = map;
     } catch (e) {
