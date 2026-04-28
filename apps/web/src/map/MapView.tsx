@@ -759,16 +759,22 @@ export function MapView({ onParcelSelect }: Props) {
   }, [aucZonage, aucCount]);
 
   // Récupération des features AUC quand zonage actif et que la carte bouge.
-  // Debounced 300 ms pour éviter une rafale de requêtes pendant un pan/zoom,
-  // et skip si le zoom est trop large (<13) — à zoom Casablanca-entière l'API
-  // renverrait des milliers de polygones inutilement.
+  // Stratégie pour éviter les fetchs inutiles :
+  //   1. skip total si zoom < 13 (à zoom Casablanca-entière l'API renverrait
+  //      des milliers de polygones)
+  //   2. on fetche un bbox 50 % plus grand que le visible (tampon) ; tant
+  //      que le visible est dans ce tampon, aucun nouveau fetch
+  //   3. debounce 200 ms sur moveend pour éviter une rafale de requêtes
+  //      durant un pan rapide
   const ZOOM_MIN_AUC = 13;
-  const DEBOUNCE_MS = 300;
+  const DEBOUNCE_MS = 200;
+  const BUFFER_FACTOR = 0.5; // étend chaque côté de 50 %
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !aucZonage) return;
     let abort: AbortController | null = null;
     let cancelled = false;
+    let loaded: { W: number; E: number; S: number; N: number } | null = null;
     const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
     let debounceId: ReturnType<typeof setTimeout> | null = null;
 
@@ -790,33 +796,59 @@ export function MapView({ onParcelSelect }: Props) {
       src.setData(fc);
     };
 
+    const contains = (
+      outer: { W: number; E: number; S: number; N: number },
+      inner: { W: number; E: number; S: number; N: number },
+    ) =>
+      outer.W <= inner.W &&
+      outer.E >= inner.E &&
+      outer.S <= inner.S &&
+      outer.N >= inner.N;
+
     const doFetch = async () => {
       if (cancelled) return;
       if (map.getZoom() < ZOOM_MIN_AUC) {
-        // À zoom faible on n'interroge pas l'API : la requête renverrait
-        // énormément de polygones (toute Casablanca) et freinerait le rendu.
         setAucStatus("idle");
         setAucCount(0);
+        loaded = null;
         const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
         if (src) src.setData({ type: "FeatureCollection", features: [] });
         return;
       }
       const b = map.getBounds();
-      const aucBbox = {
+      const visible = {
         W: b.getWest(),
         E: b.getEast(),
         S: b.getSouth(),
         N: b.getNorth(),
       };
+
+      // Si la zone visible est déjà incluse dans ce qui est chargé, on
+      // n'envoie aucune nouvelle requête.
+      if (loaded && contains(loaded, visible)) {
+        return;
+      }
+
+      // Sinon on fetche un bbox étendu (1+2*buffer)× la vue actuelle.
+      const dw = (visible.E - visible.W) * BUFFER_FACTOR;
+      const dh = (visible.N - visible.S) * BUFFER_FACTOR;
+      const buffered = {
+        W: visible.W - dw,
+        E: visible.E + dw,
+        S: visible.S - dh,
+        N: visible.N + dh,
+      };
+
       abort?.abort();
       abort = new AbortController();
       setAucStatus("loading");
       try {
-        const fc = await fetchZonage(aucBbox, abort.signal);
+        const fc = await fetchZonage(buffered, abort.signal);
         if (cancelled) return;
         setSourceData(fc);
         setAucCount(fc.features.length);
         setAucStatus("ok");
+        loaded = buffered;
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
         console.warn("[MapView] AUC zonage fetch failed", e);
