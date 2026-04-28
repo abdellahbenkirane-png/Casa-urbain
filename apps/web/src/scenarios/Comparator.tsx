@@ -1,16 +1,40 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { simulate, computeAdvancedMetrics } from "@casa/core";
 import { useScenarioStore } from "./store";
 import { fmtDh, fmtPct } from "../simulator/format";
 
+interface Row {
+  id: string;
+  nom: string;
+  ca: number;
+  charges: number;
+  resultat: number;
+  marge: number;
+  roe: number;
+  tri: number | null;
+}
+
 export function Comparator() {
   const { scenarios } = useScenarioStore();
+  // Cache local : id+updatedAt → row déjà calculé. Évite de relancer
+  // simulate() + computeAdvancedMetrics() sur les scénarios non modifiés.
+  const cacheRef = useRef<Map<string, Row>>(new Map());
 
   const rows = useMemo(() => {
-    return scenarios.map((s) => {
+    const cache = cacheRef.current;
+    const out: Row[] = [];
+    const liveKeys = new Set<string>();
+    for (const s of scenarios) {
+      const key = `${s.id}@${s.updatedAt}`;
+      liveKeys.add(key);
+      const hit = cache.get(key);
+      if (hit) {
+        out.push(hit);
+        continue;
+      }
       const result = simulate(s.input);
       const adv = computeAdvancedMetrics(s.input, result);
-      return {
+      const row: Row = {
         id: s.id,
         nom: s.input.nom,
         ca: result.totaux.totalVentes,
@@ -20,7 +44,14 @@ export function Comparator() {
         roe: result.totaux.roe,
         tri: adv.tri,
       };
-    });
+      cache.set(key, row);
+      out.push(row);
+    }
+    // Purge des entrées orphelines (scénarios supprimés ou updatedAt obsolètes)
+    for (const k of cache.keys()) {
+      if (!liveKeys.has(k)) cache.delete(k);
+    }
+    return out;
   }, [scenarios]);
 
   if (rows.length < 2) return null;

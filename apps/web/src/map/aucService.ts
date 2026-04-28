@@ -178,17 +178,42 @@ async function fetchLayerEsri(
   return res.json();
 }
 
+// Cache LRU des réponses AUC zonage. Clé = bbox arrondi à 3 décimales
+// (≈ 110 m de précision suffisant pour ré-utiliser une réponse après un
+// petit pan). 50 entrées max ; au-delà la plus ancienne est éjectée.
+const ZONAGE_CACHE = new Map<string, GeoJSON.FeatureCollection>();
+const ZONAGE_CACHE_MAX = 50;
+
+function bboxKey(b: BBox4326): string {
+  const r = (n: number) => n.toFixed(3);
+  return `${r(b.W)},${r(b.S)},${r(b.E)},${r(b.N)}|${currentZonageLayer()}`;
+}
+
 export async function fetchZonage(
   bbox: BBox4326,
   signal?: AbortSignal,
 ): Promise<GeoJSON.FeatureCollection> {
+  const key = bboxKey(bbox);
+  const cached = ZONAGE_CACHE.get(key);
+  if (cached) {
+    // Touch (LRU) : ré-insère pour mettre en tête.
+    ZONAGE_CACHE.delete(key);
+    ZONAGE_CACHE.set(key, cached);
+    return cached;
+  }
   const data = await fetchLayerEsri(
     AUC_LAYERS.zonage,
     bbox,
     ["id", "zone", "secteur", "commune", "prefecture", "area", "label", "name", "origine"],
     signal,
   );
-  return esriToGeojson<ZoneAttributes>(data, "zonage");
+  const fc = esriToGeojson<ZoneAttributes>(data, "zonage");
+  ZONAGE_CACHE.set(key, fc);
+  if (ZONAGE_CACHE.size > ZONAGE_CACHE_MAX) {
+    const first = ZONAGE_CACHE.keys().next().value;
+    if (first) ZONAGE_CACHE.delete(first);
+  }
+  return fc;
 }
 
 export async function fetchEquipements(

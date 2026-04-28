@@ -177,6 +177,7 @@ export function MapView({ onParcelSelect }: Props) {
   const [menuOpen, setMenuOpen] = useState(
     typeof window === "undefined" ? true : window.innerWidth > 768,
   );
+  const [showBuildings, setShowBuildings] = useState(false);
   const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
     if (stored) {
@@ -304,29 +305,25 @@ export function MapView({ onParcelSelect }: Props) {
           console.warn("[MapView] périmètre indisponible", e);
         }
 
-        // 2. Bâtiments OSM (calque informatif, non cliquable)
-        try {
-          const buildings = await fetch("/data/ainchock/buildings.geojson").then((r) =>
-            r.ok ? r.json() : null,
-          );
-          if (buildings) {
-            map.addSource("buildings", { type: "geojson", data: buildings });
-            map.addLayer({
-              id: "buildings-fill",
-              type: "fill",
-              source: "buildings",
-              paint: { "fill-color": "#8b949e", "fill-opacity": 0.35 },
-            });
-            map.addLayer({
-              id: "buildings-outline",
-              type: "line",
-              source: "buildings",
-              paint: { "line-color": "#30363d", "line-width": 0.5 },
-            });
-          }
-        } catch (e) {
-          console.warn("[MapView] bâtiments indisponibles", e);
-        }
+        // 2. Bâtiments OSM — source vide à l'init, données chargées
+        // paresseusement depuis un useEffect quand l'utilisateur active
+        // le toggle "Bâtiments". Économise 3,4 MB sur le 1er chargement.
+        map.addSource("buildings", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "buildings-fill",
+          type: "fill",
+          source: "buildings",
+          paint: { "fill-color": "#8b949e", "fill-opacity": 0 },
+        });
+        map.addLayer({
+          id: "buildings-outline",
+          type: "line",
+          source: "buildings",
+          paint: { "line-color": "#30363d", "line-width": 0.5, "line-opacity": 0 },
+        });
 
         // 3. AUC Zonage (vide à l'init, peuplé à la demande via toggle + map idle)
         map.addSource("auc-zonage", {
@@ -498,6 +495,45 @@ export function MapView({ onParcelSelect }: Props) {
     if (!map || !map.getLayer("planche-layer")) return;
     map.setPaintProperty("planche-layer", "raster-opacity", planche ? plancheOpacity : 0);
   }, [planche, plancheOpacity]);
+
+  // Toggle bâtiments OSM : fetch paresseux + opacités.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+    const apply = async () => {
+      if (cancelled) return;
+      if (!map.getLayer("buildings-fill")) {
+        setTimeout(apply, 100);
+        return;
+      }
+      if (!showBuildings) {
+        map.setPaintProperty("buildings-fill", "fill-opacity", 0);
+        map.setPaintProperty("buildings-outline", "line-opacity", 0);
+        return;
+      }
+      const src = map.getSource("buildings") as maplibregl.GeoJSONSource | undefined;
+      const data = (src as unknown as { _data?: GeoJSON.FeatureCollection })._data;
+      if (!data || !data.features?.length) {
+        try {
+          const fc = await fetch("/data/ainchock/buildings.geojson").then((r) =>
+            r.ok ? r.json() : null,
+          );
+          if (cancelled) return;
+          if (fc && src) src.setData(fc);
+        } catch (e) {
+          console.warn("[MapView] bâtiments indisponibles", e);
+          return;
+        }
+      }
+      map.setPaintProperty("buildings-fill", "fill-opacity", 0.35);
+      map.setPaintProperty("buildings-outline", "line-opacity", 1);
+    };
+    apply();
+    return () => {
+      cancelled = true;
+    };
+  }, [showBuildings]);
 
   // Bascule fond carto / satellite
   useEffect(() => {
@@ -675,13 +711,19 @@ export function MapView({ onParcelSelect }: Props) {
     };
   }, [aucZonage, aucCount]);
 
-  // Récupération des features AUC quand zonage actif et que la carte bouge
+  // Récupération des features AUC quand zonage actif et que la carte bouge.
+  // Debounced 300 ms pour éviter une rafale de requêtes pendant un pan/zoom,
+  // et skip si le zoom est trop large (<13) — à zoom Casablanca-entière l'API
+  // renverrait des milliers de polygones inutilement.
+  const ZOOM_MIN_AUC = 13;
+  const DEBOUNCE_MS = 300;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !aucZonage) return;
     let abort: AbortController | null = null;
     let cancelled = false;
     const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+    let debounceId: ReturnType<typeof setTimeout> | null = null;
 
     const setSourceData = (fc: GeoJSON.FeatureCollection, retries = 0) => {
       if (cancelled) return;
@@ -701,7 +743,17 @@ export function MapView({ onParcelSelect }: Props) {
       src.setData(fc);
     };
 
-    const refresh = async () => {
+    const doFetch = async () => {
+      if (cancelled) return;
+      if (map.getZoom() < ZOOM_MIN_AUC) {
+        // À zoom faible on n'interroge pas l'API : la requête renverrait
+        // énormément de polygones (toute Casablanca) et freinerait le rendu.
+        setAucStatus("idle");
+        setAucCount(0);
+        const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
+        if (src) src.setData({ type: "FeatureCollection", features: [] });
+        return;
+      }
       const b = map.getBounds();
       const aucBbox = {
         W: b.getWest(),
@@ -714,6 +766,7 @@ export function MapView({ onParcelSelect }: Props) {
       setAucStatus("loading");
       try {
         const fc = await fetchZonage(aucBbox, abort.signal);
+        if (cancelled) return;
         setSourceData(fc);
         setAucCount(fc.features.length);
         setAucStatus("ok");
@@ -724,11 +777,18 @@ export function MapView({ onParcelSelect }: Props) {
       }
     };
 
-    refresh();
+    const refresh = () => {
+      if (debounceId !== null) clearTimeout(debounceId);
+      debounceId = setTimeout(doFetch, DEBOUNCE_MS);
+    };
+
+    // 1er fetch immédiat (pas de debounce sur le 1er coup pour réactivité)
+    doFetch();
     map.on("moveend", refresh);
     return () => {
       cancelled = true;
       abort?.abort();
+      if (debounceId !== null) clearTimeout(debounceId);
       map.off("moveend", refresh);
       for (const t of pendingTimers) clearTimeout(t);
       pendingTimers.clear();
@@ -805,6 +865,14 @@ export function MapView({ onParcelSelect }: Props) {
             onChange={(e) => setPlanche(e.target.checked)}
           />
           <span>Planche PAU</span>
+        </label>
+        <label className="map-toolbar-toggle">
+          <input
+            type="checkbox"
+            checked={showBuildings}
+            onChange={(e) => setShowBuildings(e.target.checked)}
+          />
+          <span>Bâtiments OSM</span>
         </label>
         <label className="map-toolbar-toggle">
           <input

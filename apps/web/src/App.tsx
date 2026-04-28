@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard } from "./zoning/ZoneCard";
-import { SimulatorPanel } from "./simulator/SimulatorPanel";
+
+// Code-split : le simulateur est chargé seulement au 1er clic sur une parcelle.
+// Économise ~80 kB sur le bundle initial.
+const SimulatorPanel = lazy(() =>
+  import("./simulator/SimulatorPanel").then((m) => ({ default: m.SimulatorPanel })),
+);
 
 export function App() {
   const [parcelle, setParcelle] = useState<ParcelleProperties | null>(null);
@@ -39,7 +44,9 @@ export function App() {
               <p className="prefecture-line">📍 {parcelle.prefecture}</p>
             )}
             <ZoneCard parcelle={parcelle} />
-            <SimulatorPanel parcelle={parcelle} />
+            <Suspense fallback={<div className="lazy-loading">Chargement du simulateur…</div>}>
+              <SimulatorPanel parcelle={parcelle} />
+            </Suspense>
           </>
         )}
       </aside>
