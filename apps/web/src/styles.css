@@ -494,7 +494,7 @@ body { background: var(--bg); color: var(--text); }
 
 .draw-panel {
   position: absolute;
-  top: 12px;
+  top: 64px; /* sous la SearchBar */
   left: 50%;
   transform: translateX(-50%);
   background: rgba(22, 27, 34, 0.95);
@@ -530,6 +530,7 @@ body { background: var(--bg); color: var(--text); }
 
 @media (max-width: 768px) {
   .draw-panel {
+    top: 100px; /* sous la SearchBar mobile (top:56 + h:36 + 8) */
     left: 12px;
     right: 12px;
     transform: none;
