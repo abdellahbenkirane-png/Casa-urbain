@@ -179,7 +179,14 @@ function buildPrintHtml(
 }
 
 function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+  const map: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  return s.replace(/[&<>"']/g, (c) => map[c] ?? `&#${c.charCodeAt(0)};`);
 }
 
 function sanitize(s: string): string {

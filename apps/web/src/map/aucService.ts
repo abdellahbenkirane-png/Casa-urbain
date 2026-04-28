@@ -26,12 +26,28 @@ export function setZonageLayerId(id: string): void {
   else localStorage.removeItem(STORAGE_KEY);
 }
 
-export const AUC_LAYERS = {
-  zonage: readLayerOverride() ?? "Layer-579747",
+const DEFAULT_LAYERS = {
+  zonage: "Layer-579747",
   equipements: "Layer-579748",
 } as const;
 
-export type AucLayer = keyof typeof AUC_LAYERS;
+/**
+ * Renvoie l'ID actuel du calque (override localStorage en priorité).
+ * Évalué dynamiquement à chaque appel — donc setZonageLayerId est pris
+ * en compte sans recharger la page.
+ */
+export function currentZonageLayer(): string {
+  return readLayerOverride() ?? DEFAULT_LAYERS.zonage;
+}
+
+export const AUC_LAYERS = {
+  get zonage() {
+    return currentZonageLayer();
+  },
+  equipements: DEFAULT_LAYERS.equipements,
+};
+
+export type AucLayer = keyof typeof DEFAULT_LAYERS;
 
 // Le client appelle notre proxy Vercel (apps/web/api/auc.js), qui relaie
 // au service AUC. Cela contourne les restrictions CORS observées en prod

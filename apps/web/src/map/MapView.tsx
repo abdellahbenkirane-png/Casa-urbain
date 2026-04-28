@@ -168,6 +168,7 @@ export function MapView({ onParcelSelect }: Props) {
   const [aucCount, setAucCount] = useState(0);
   const [layerInput, setLayerInput] = useState(AUC_LAYERS.zonage);
   const [layerEditing, setLayerEditing] = useState(false);
+  const [layerVersion, setLayerVersion] = useState(0);
   const [satellite, setSatellite] = useState(true);
   const [drawMode, setDrawMode] = useState(false);
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
@@ -180,9 +181,18 @@ export function MapView({ onParcelSelect }: Props) {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
     if (stored) {
       try {
-        return JSON.parse(stored);
-      } catch {
-        // fallthrough
+        const parsed = JSON.parse(stored);
+        // Validation minimale : 4 nombres finis dans des plages plausibles.
+        if (
+          typeof parsed?.W === "number" && typeof parsed?.E === "number" &&
+          typeof parsed?.S === "number" && typeof parsed?.N === "number" &&
+          [parsed.W, parsed.E, parsed.S, parsed.N].every(Number.isFinite)
+        ) {
+          return parsed as BBox;
+        }
+        console.warn("[MapView] planche-bbox invalide en localStorage — fallback default");
+      } catch (e) {
+        console.warn("[MapView] planche-bbox JSON corrompu — fallback default", e);
       }
     }
     return DEFAULT_BBOX;
@@ -642,9 +652,12 @@ export function MapView({ onParcelSelect }: Props) {
     const map = mapRef.current;
     if (!map) return;
     let retries = 0;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
     const apply = () => {
+      if (cancelled) return;
       if (!map.getLayer("auc-zonage-fill")) {
-        if (retries++ < 50) setTimeout(apply, 100);
+        if (retries++ < 50) timerId = setTimeout(apply, 100);
         return;
       }
       map.setPaintProperty("auc-zonage-fill", "fill-opacity", aucZonage ? 0.32 : 0);
@@ -656,6 +669,10 @@ export function MapView({ onParcelSelect }: Props) {
       }
     };
     apply();
+    return () => {
+      cancelled = true;
+      if (timerId !== null) clearTimeout(timerId);
+    };
   }, [aucZonage, aucCount]);
 
   // Récupération des features AUC quand zonage actif et que la carte bouge
@@ -663,12 +680,19 @@ export function MapView({ onParcelSelect }: Props) {
     const map = mapRef.current;
     if (!map || !aucZonage) return;
     let abort: AbortController | null = null;
+    let cancelled = false;
+    const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
     const setSourceData = (fc: GeoJSON.FeatureCollection, retries = 0) => {
+      if (cancelled) return;
       const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
       if (!src) {
         if (retries < 50) {
-          setTimeout(() => setSourceData(fc, retries + 1), 100);
+          const t = setTimeout(() => {
+            pendingTimers.delete(t);
+            setSourceData(fc, retries + 1);
+          }, 100);
+          pendingTimers.add(t);
           return;
         }
         console.warn("[MapView] AUC source jamais créée — abandon");
@@ -703,10 +727,13 @@ export function MapView({ onParcelSelect }: Props) {
     refresh();
     map.on("moveend", refresh);
     return () => {
+      cancelled = true;
       abort?.abort();
       map.off("moveend", refresh);
+      for (const t of pendingTimers) clearTimeout(t);
+      pendingTimers.clear();
     };
-  }, [aucZonage]);
+  }, [aucZonage, layerVersion]);
 
   return (
     <>
@@ -758,7 +785,11 @@ export function MapView({ onParcelSelect }: Props) {
                   className="btn-mini"
                   onClick={() => {
                     setZonageLayerId(layerInput);
-                    location.reload();
+                    // Force le useEffect de refetch à se ré-exécuter avec
+                    // le nouveau Layer-ID — sans recharger la page (donc
+                    // sans perdre les scénarios non sauvegardés).
+                    setLayerVersion((v) => v + 1);
+                    setLayerEditing(false);
                   }}
                 >
                   Appliquer

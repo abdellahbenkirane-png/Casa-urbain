@@ -18,6 +18,15 @@ export function SimulatorPanel({ parcelle }: { parcelle: ParcelleProperties }) {
   const { scenarios, activeId, loadForParcelle, upsert } = useScenarioStore();
   const [draft, setDraft] = useState<SimulationInput | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState<null | "saving" | "xlsx" | "pdf">(null);
+  const [feedback, setFeedback] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+
+  // Auto-dismiss feedback after a few seconds.
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => setFeedback(null), feedback.kind === "ok" ? 2500 : 5000);
+    return () => clearTimeout(t);
+  }, [feedback]);
 
   useEffect(() => {
     loadForParcelle(parcelle.id);
@@ -52,32 +61,79 @@ export function SimulatorPanel({ parcelle }: { parcelle: ParcelleProperties }) {
   };
 
   const onSave = async () => {
-    await upsert(draft, activeId ?? undefined);
-    setDirty(false);
+    setBusy("saving");
+    try {
+      await upsert(draft, activeId ?? undefined);
+      setDirty(false);
+      setFeedback({ kind: "ok", msg: "Scénario enregistré." });
+    } catch (e) {
+      console.error("[SimulatorPanel] save failed", e);
+      setFeedback({ kind: "err", msg: `Échec de l'enregistrement : ${(e as Error).message}` });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const onSaveAsNew = async () => {
-    await upsert({ ...draft, nom: `${draft.nom} (nouveau)` });
-    setDirty(false);
+    setBusy("saving");
+    try {
+      await upsert({ ...draft, nom: `${draft.nom} (nouveau)` });
+      setDirty(false);
+      setFeedback({ kind: "ok", msg: "Nouveau scénario créé." });
+    } catch (e) {
+      console.error("[SimulatorPanel] saveAsNew failed", e);
+      setFeedback({ kind: "err", msg: `Échec de la création : ${(e as Error).message}` });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onXlsx = async () => {
+    setBusy("xlsx");
+    try {
+      await exportScenarioXlsx(draft);
+      setFeedback({ kind: "ok", msg: "Export XLSX prêt." });
+    } catch (e) {
+      console.error("[SimulatorPanel] xlsx export failed", e);
+      setFeedback({ kind: "err", msg: `Export XLSX échoué : ${(e as Error).message}` });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onPdf = () => {
+    setBusy("pdf");
+    try {
+      exportScenarioPdf(draft);
+      setFeedback({ kind: "ok", msg: "Aperçu PDF ouvert." });
+    } catch (e) {
+      console.error("[SimulatorPanel] pdf export failed", e);
+      setFeedback({ kind: "err", msg: `Export PDF échoué : ${(e as Error).message}` });
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
     <div className="simulator">
       <ScenarioTabs />
       <div className="sim-actions">
-        <button className="btn primary" onClick={onSave} disabled={!dirty}>
-          {activeId ? "Enregistrer" : "Créer le scénario"}
+        <button className="btn primary" onClick={onSave} disabled={!dirty || busy === "saving"}>
+          {busy === "saving" ? "…" : activeId ? "Enregistrer" : "Créer le scénario"}
         </button>
-        <button className="btn" onClick={onSaveAsNew}>
+        <button className="btn" onClick={onSaveAsNew} disabled={busy === "saving"}>
           Nouveau scénario
         </button>
-        <button className="btn" onClick={() => exportScenarioXlsx(draft)}>
-          ⬇ XLSX
+        <button className="btn" onClick={onXlsx} disabled={busy === "xlsx"}>
+          {busy === "xlsx" ? "⏳" : "⬇"} XLSX
         </button>
-        <button className="btn" onClick={() => exportScenarioPdf(draft)}>
-          ⬇ PDF
+        <button className="btn" onClick={onPdf} disabled={busy === "pdf"}>
+          {busy === "pdf" ? "⏳" : "⬇"} PDF
         </button>
       </div>
+      {feedback && (
+        <div className={`sim-feedback ${feedback.kind}`}>{feedback.msg}</div>
+      )}
       {violations.length > 0 && (
         <div className="violations">
           <strong>Conformité PAU — {violations.length} alerte{violations.length > 1 ? "s" : ""}</strong>

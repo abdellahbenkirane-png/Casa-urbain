@@ -690,6 +690,24 @@ body { background: var(--bg); color: var(--text); }
 .btn:hover { border-color: var(--accent); }
 .btn.primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; font-weight: 600; }
 .btn.primary:disabled { background: var(--panel-2); border-color: var(--border); color: var(--muted); cursor: not-allowed; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.sim-feedback {
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid;
+}
+.sim-feedback.ok {
+  background: rgba(63, 185, 80, 0.1);
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+.sim-feedback.err {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+}
 
 /* === Results === */
 
