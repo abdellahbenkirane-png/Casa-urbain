@@ -159,21 +159,21 @@ function Welcome() {
       </p>
       <ol className="steps">
         <li>
-          <span className="step-num">1</span>
+          <span className="step-num">01</span>
           <div>
             <strong>Trouvez votre terrain</strong>
             <p>Cherchez une adresse ou zoomez sur la carte.</p>
           </div>
         </li>
         <li>
-          <span className="step-num">2</span>
+          <span className="step-num">02</span>
           <div>
             <strong>Cliquez sur une zone colorée</strong>
             <p>Hauteur autorisée, usages permis, surface minimale…</p>
           </div>
         </li>
         <li>
-          <span className="step-num">3</span>
+          <span className="step-num">03</span>
           <div>
             <strong>Découvrez la rentabilité</strong>
             <p>Bénéfice et marge estimés, ajustables selon votre projet.</p>

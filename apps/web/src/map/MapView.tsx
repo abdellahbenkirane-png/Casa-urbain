@@ -959,7 +959,12 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
 
       <div className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden>CU</span>
+          <svg className="brand-mark" width="22" height="22" viewBox="0 0 22 22" aria-hidden>
+            {/* Plan de zonage stylisé : une parcelle pleine dans une trame. */}
+            <rect x="1" y="1" width="20" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M11 1v20M1 11h20" stroke="currentColor" strokeWidth="1.6" />
+            <rect x="11" y="11" width="10" height="10" rx="0" fill="currentColor" />
+          </svg>
           <span className="brand-text">
             <strong>Casa Urban</strong>
             <small>Zonage &amp; rentabilité immobilière</small>
