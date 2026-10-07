@@ -70,6 +70,9 @@
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* Rien ne doit pouvoir élargir la page au-delà de l'écran. */
+html, body { overflow-x: hidden; max-width: 100%; }
 body { background: var(--bg); color: var(--text); }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -82,7 +85,9 @@ h1, h2, h3, h4, p { margin: 0; }
    ========================================================= */
 .layout {
   display: flex;
-  width: 100vw;
+  /* 100 % et non 100vw : avec le zoom de page de Safari iOS, 100vw peut
+     dépasser la largeur visible et pousser le contenu hors de l'écran. */
+  width: 100%;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
@@ -909,7 +914,8 @@ input[type="number"] { -moz-appearance: textfield; }
     left: 0;
     right: 0;
     bottom: 0;
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     z-index: 20;
     border-left: 0;
     border-radius: 18px 18px 0 0;
@@ -971,10 +977,10 @@ input[type="number"] { -moz-appearance: textfield; }
   .measure-btn.is-active { width: auto; padding: 0 14px; }
   .measure-btn.is-active span { display: inline; }
   .layers { z-index: 25; }
-  .layers-menu { width: min(280px, calc(100vw - 24px)); max-height: calc(100dvh - 140px); overflow-y: auto; }
+  .layers-menu { width: 280px; max-height: calc(100dvh - 140px); overflow-y: auto; }
 
   .zoom-hint { top: 72px; left: 12px; transform: none; font-size: 13px; }
-  .legend { bottom: calc(var(--sheet-peek) + 12px); min-width: 0; max-width: calc(100vw - 80px); }
+  .legend { bottom: calc(var(--sheet-peek) + 12px); min-width: 0; max-width: calc(100% - 80px); }
   .map .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-peek) + 4px); }
   .map .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-peek) + 4px); }
 
@@ -1044,4 +1050,11 @@ input[type="number"] { -moz-appearance: textfield; }
   .pill-btn.mobile-only { display: inline-flex; }
   .mobile-only { display: inline-flex; }
   .icon-btn.mobile-only { display: grid; }
+}
+
+/* Mobile : tout le contenu du panneau reste dans sa largeur. */
+@media (max-width: 768px) {
+  .panel-body, .simulator, .card, .verdict, .accordion, .notice { min-width: 0; max-width: 100%; }
+  .verdict-figures > div { min-width: 0; }
+  .verdict-big { font-size: 24px; }
 }
