@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: "Casa Urban",
         description:
           "Plan d'Aménagement Unifié + simulateur de pro forma promoteur sur Casablanca",
-        theme_color: "#0e1116",
-        background_color: "#0e1116",
+        theme_color: "#0f766e",
+        background_color: "#ffffff",
         display: "standalone",
         start_url: "/",
         icons: [

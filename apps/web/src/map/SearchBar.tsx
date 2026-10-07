@@ -116,10 +116,14 @@ export function SearchBar({ getMap }: Props) {
   return (
     <div className="search" ref={wrapperRef}>
       <div className="search-input-wrapper">
-        <span className="search-icon">🔍</span>
+        <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
         <input
           type="search"
-          placeholder="Adresse, quartier, boulevard…"
+          placeholder="Rechercher une adresse, un quartier…"
+          aria-label="Rechercher une adresse"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
@@ -139,7 +143,7 @@ export function SearchBar({ getMap }: Props) {
             ✕
           </button>
         )}
-        {loading && <span className="search-spinner">⏳</span>}
+        {loading && <span className="spinner" aria-label="Recherche…" />}
       </div>
       {open && results.length > 0 && (
         <ul className="search-results">

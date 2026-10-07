@@ -3,11 +3,15 @@ import maplibregl, { Map as MlMap } from "maplibre-gl";
 import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
 import { fetchZonage } from "./aucService";
 import { SearchBar } from "./SearchBar";
+import { Legend } from "./Legend";
+import { FAMILLE_COLORS as ZONE_COLORS } from "../zoning/zones";
 
 const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
 
 interface Props {
   onParcelSelect: (props: ParcelleProperties) => void;
+  /** false → efface le contour de sélection (panneau fermé). */
+  hasSelection: boolean;
 }
 
 export interface ParcelleProperties {
@@ -20,20 +24,6 @@ export interface ParcelleProperties {
   prixTerrainMedianDhM2: number;
   prefecture?: string;
 }
-
-// Couleur dérivée de la famille de zone (A, B, C, D, E, I, PB, PU, S, ZR).
-const ZONE_COLORS: Record<string, string> = {
-  A: "#2f81f7",
-  B: "#58a6ff",
-  C: "#79c0ff",
-  D: "#3fb950",
-  E: "#a5d6ff",
-  I: "#a371f7",
-  PB: "#f0883e",
-  PU: "#db61a2",
-  S: "#d29922",
-  ZR: "#8b949e",
-};
 
 // Prix de terrain médian estimé par famille de zone (DH/m²).
 // À remplacer par des références marché réelles une fois disponibles.
@@ -49,6 +39,8 @@ const PRIX_PAR_FAMILLE: Record<string, number> = {
   S: 10000,
   ZR: 11000,
 };
+
+const ZOOM_MIN_AUC = 13;
 
 interface BBox { W: number; E: number; S: number; N: number }
 
@@ -157,7 +149,35 @@ function PlancheCalibration({
   );
 }
 
-export function MapView({ onParcelSelect }: Props) {
+function Switch({
+  checked,
+  onChange,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <label className="layer-row">
+      <span className="layer-text">
+        <span>{label}</span>
+        {hint && <small>{hint}</small>}
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        className="switch"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
+  );
+}
+
+export function MapView({ onParcelSelect, hasSelection }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -174,27 +194,30 @@ export function MapView({ onParcelSelect }: Props) {
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const [drawArea, setDrawArea] = useState<number | null>(null);
   const [drawFinalized, setDrawFinalized] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(
-    typeof window === "undefined" ? true : window.innerWidth > 768,
-  );
-  // Si l'utilisateur retourne son téléphone (portrait → paysage) ou
-  // redimensionne sa fenêtre, on remet l'état du menu cohérent avec la
-  // largeur courante. Ne touche pas à l'état si l'utilisateur a déjà
-  // explicitement ouvert/fermé sur la même largeur.
-  const lastBreakpointRef = useRef<"narrow" | "wide" | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const sync = () => {
-      const wide = window.innerWidth > 768;
-      const next = wide ? "wide" : "narrow";
-      if (lastBreakpointRef.current !== next) {
-        lastBreakpointRef.current = next;
-        setMenuOpen(wide);
-      }
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
-    sync();
-    window.addEventListener("resize", sync);
-    return () => window.removeEventListener("resize", sync);
-  }, []);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+  // Les clics carte servent à poser des sommets en mode mesure : on ne
+  // sélectionne pas de zone pendant ce temps.
+  const drawModeRef = useRef(false);
+  useEffect(() => {
+    drawModeRef.current = drawMode;
+  }, [drawMode]);
+  const [zoomTooLow, setZoomTooLow] = useState(true);
   const [showBuildings, setShowBuildings] = useState(false);
   const [bbox, setBbox] = useState<BBox>(() => {
     const stored = typeof localStorage !== "undefined" ? localStorage.getItem("planche-bbox") : null;
@@ -271,8 +294,11 @@ export function MapView({ onParcelSelect }: Props) {
         // Au-delà l'image disparaîtrait ; on bloque plutôt que d'afficher
         // une tuile pixellisée.
         maxZoom: 19,
+        attributionControl: { compact: true },
       });
       mapRef.current = map;
+      // Accès console en dev uniquement (debug / tests manuels).
+      if (import.meta.env.DEV) (window as unknown as { __map: MlMap }).__map = map;
     } catch (e) {
       setError(String(e));
       return;
@@ -289,7 +315,7 @@ export function MapView({ onParcelSelect }: Props) {
 
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false, showZoom: true }),
-      "top-right",
+      "bottom-right",
     );
     map.addControl(
       new maplibregl.GeolocateControl({
@@ -298,10 +324,17 @@ export function MapView({ onParcelSelect }: Props) {
         showAccuracyCircle: true,
         showUserLocation: true,
       }),
-      "top-right",
+      "bottom-right",
     );
 
     map.on("load", async () => {
+      // Sur mobile, l'attribution reste repliée derrière le bouton ⓘ
+      // (MapLibre la déplie au chargement, ce qui masque la légende).
+      if (window.innerWidth <= 768) {
+        containerRef.current
+          ?.querySelector(".maplibregl-ctrl-attrib")
+          ?.classList.remove("maplibregl-compact-show");
+      }
       try {
         // 0. Planche PAU d'Aïn Chock — overlay raster
         map.addSource("planche", {
@@ -392,7 +425,7 @@ export function MapView({ onParcelSelect }: Props) {
           id: "auc-zonage-outline",
           type: "line",
           source: "auc-zonage",
-          paint: { "line-color": "#0e1116", "line-width": 1.5, "line-opacity": 0 },
+          paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0 },
         });
 
         // 4. Parcelles de démo (fallback quand AUC désactivé)
@@ -435,6 +468,18 @@ export function MapView({ onParcelSelect }: Props) {
           paint: { "line-color": "#fff", "line-width": 2 },
         });
 
+        // Contour de la zone sélectionnée
+        map.addSource("selection", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "selection-line",
+          type: "line",
+          source: "selection",
+          paint: { "line-color": "#ffffff", "line-width": 3 },
+        });
+
         // 4. Outil de mesure — polygone en cours de dessin (fill + line + points)
         const emptyFc: GeoJSON.FeatureCollection = {
           type: "FeatureCollection",
@@ -468,14 +513,22 @@ export function MapView({ onParcelSelect }: Props) {
         });
 
         // Click handlers
+        const highlight = (feature: maplibregl.MapGeoJSONFeature) => {
+          const src = map.getSource("selection") as maplibregl.GeoJSONSource | undefined;
+          src?.setData({ type: "Feature", properties: {}, geometry: feature.geometry });
+        };
         map.on("click", "parcelles-fill", (e) => {
           const feature = e.features?.[0];
-          if (!feature) return;
+          if (!feature || drawModeRef.current) return;
+          highlight(feature);
           onParcelSelect(feature.properties as ParcelleProperties);
         });
         map.on("click", "auc-zonage-fill", (e) => {
           const feature = e.features?.[0];
-          if (!feature) return;
+          if (!feature || drawModeRef.current) return;
+          // Les parcelles de démo sont au-dessus : elles gardent la priorité.
+          if (map.queryRenderedFeatures(e.point, { layers: ["parcelles-fill"] }).length > 0) return;
+          highlight(feature);
           const a = feature.properties as Record<string, unknown>;
           const secteur = String(a.secteur ?? "").trim();
           if (!secteur) return;
@@ -505,6 +558,10 @@ export function MapView({ onParcelSelect }: Props) {
         };
         setPointer("parcelles-fill");
         setPointer("auc-zonage-fill");
+
+        const syncZoom = () => setZoomTooLow(map.getZoom() < ZOOM_MIN_AUC);
+        syncZoom();
+        map.on("zoomend", syncZoom);
       } catch (e) {
         setError(String(e));
       }
@@ -522,6 +579,12 @@ export function MapView({ onParcelSelect }: Props) {
       mapRef.current = null;
     };
   }, [onParcelSelect]);
+
+  useEffect(() => {
+    if (hasSelection) return;
+    const src = mapRef.current?.getSource("selection") as maplibregl.GeoJSONSource | undefined;
+    src?.setData({ type: "FeatureCollection", features: [] });
+  }, [hasSelection]);
 
   // Opacité planche
   useEffect(() => {
@@ -743,12 +806,14 @@ export function MapView({ onParcelSelect }: Props) {
         if (retries++ < 50) timerId = setTimeout(apply, 100);
         return;
       }
-      map.setPaintProperty("auc-zonage-fill", "fill-opacity", aucZonage ? 0.32 : 0);
+      map.setPaintProperty("auc-zonage-fill", "fill-opacity", aucZonage ? 0.38 : 0);
       map.setPaintProperty("auc-zonage-outline", "line-opacity", aucZonage ? 0.9 : 0);
+      // visibility (et non opacité) : un calque masqué ne doit plus capter les clics.
+      map.setLayoutProperty("auc-zonage-fill", "visibility", aucZonage ? "visible" : "none");
       if (map.getLayer("parcelles-fill")) {
         const hide = aucZonage && aucCount > 0;
-        map.setPaintProperty("parcelles-fill", "fill-opacity", hide ? 0 : 0.7);
-        map.setPaintProperty("parcelles-outline", "line-opacity", hide ? 0 : 1);
+        map.setLayoutProperty("parcelles-fill", "visibility", hide ? "none" : "visible");
+        map.setLayoutProperty("parcelles-outline", "visibility", hide ? "none" : "visible");
       }
     };
     apply();
@@ -766,7 +831,6 @@ export function MapView({ onParcelSelect }: Props) {
   //      que le visible est dans ce tampon, aucun nouveau fetch
   //   3. debounce 200 ms sur moveend pour éviter une rafale de requêtes
   //      durant un pan rapide
-  const ZOOM_MIN_AUC = 13;
   const DEBOUNCE_MS = 200;
   const BUFFER_FACTOR = 0.5; // étend chaque côté de 50 %
   useEffect(() => {
@@ -874,97 +938,124 @@ export function MapView({ onParcelSelect }: Props) {
     };
   }, [aucZonage]);
 
+  const aucHint =
+    aucStatus === "loading"
+      ? "Chargement…"
+      : aucStatus === "error"
+        ? "Service AUC indisponible"
+        : aucStatus === "ok"
+          ? `${aucCount} zones affichées`
+          : "Visible à partir du zoom quartier";
+
   return (
     <>
       <div ref={containerRef} className="map" />
-      <SearchBar getMap={() => mapRef.current} />
-      <button
-        className="menu-btn"
-        onClick={() => setMenuOpen((o) => !o)}
-        aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-      >
-        {menuOpen ? "✕" : "☰"} Calques
-      </button>
-      <div className={`map-toolbar ${menuOpen ? "is-open" : ""}`}>
-        <label className="map-toolbar-toggle">
-          <input
-            type="checkbox"
-            checked={satellite}
-            onChange={(e) => setSatellite(e.target.checked)}
-          />
-          <span>Satellite</span>
-        </label>
-        <label className="map-toolbar-toggle">
-          <input
-            type="checkbox"
-            checked={aucZonage}
-            onChange={(e) => setAucZonage(e.target.checked)}
-          />
-          <span>Zonage AUC</span>
-        </label>
-        {aucZonage && (
-          <span className="auc-status">
-            {aucStatus === "loading" && "⏳ chargement…"}
-            {aucStatus === "ok" && `✓ ${aucCount} polygones`}
-            {aucStatus === "error" && "⚠ AUC indisponible"}
+
+      <div className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>CU</span>
+          <span className="brand-text">
+            <strong>Casa Urban</strong>
+            <small>Zonage &amp; rentabilité immobilière</small>
           </span>
-        )}
-        <label className="map-toolbar-toggle">
-          <input
-            type="checkbox"
-            checked={planche}
-            onChange={(e) => setPlanche(e.target.checked)}
-          />
-          <span>Planche PAU</span>
-        </label>
-        <label className="map-toolbar-toggle">
-          <input
-            type="checkbox"
-            checked={showBuildings}
-            onChange={(e) => setShowBuildings(e.target.checked)}
-          />
-          <span>Bâtiments OSM</span>
-        </label>
-        <label className="map-toolbar-toggle">
-          <input
-            type="checkbox"
-            checked={drawMode}
-            onChange={(e) => {
-              const on = e.target.checked;
-              setDrawMode(on);
-              if (!on) resetDraw();
-            }}
-          />
-          <span>📐 Mesurer</span>
-        </label>
-        {planche && (
-          <>
-            <input
-              type="range"
-              min={0.2}
-              max={1}
-              step={0.05}
-              value={plancheOpacity}
-              onChange={(e) => setPlancheOpacity(Number(e.target.value))}
-              title="Opacité de la planche"
+        </div>
+        <SearchBar getMap={() => mapRef.current} />
+      </div>
+
+      <div className="layers" ref={menuRef}>
+        <button
+          className={`map-btn ${menuOpen ? "is-active" : ""}`}
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+          aria-label="Calques de la carte"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden>
+            <path d="M12 3 2 8l10 5 10-5-10-5Z" />
+            <path d="m2 13 10 5 10-5" />
+          </svg>
+          <span>Calques</span>
+        </button>
+        {menuOpen && (
+          <div className="layers-menu" role="dialog" aria-label="Calques">
+            <div className="layers-section">Fond de carte</div>
+            <div className="segmented">
+              <button className={!satellite ? "on" : ""} onClick={() => setSatellite(false)}>
+                Plan
+              </button>
+              <button className={satellite ? "on" : ""} onClick={() => setSatellite(true)}>
+                Satellite
+              </button>
+            </div>
+            <div className="layers-section">Données</div>
+            <Switch
+              checked={aucZonage}
+              onChange={setAucZonage}
+              label="Zonage PAU"
+              hint={aucZonage ? aucHint : "Source : Agence Urbaine de Casablanca"}
             />
-            <button className="btn-mini" onClick={() => setCalibrating((c) => !c)}>
-              {calibrating ? "Fermer le calage" : "Caler la planche"}
-            </button>
-          </>
+            <Switch checked={showBuildings} onChange={setShowBuildings} label="Bâtiments" hint="Aïn Chock uniquement" />
+            <Switch checked={planche} onChange={setPlanche} label="Planche PAU scannée" hint="Aïn Chock uniquement" />
+            {planche && (
+              <div className="layer-extra">
+                <label className="range-row">
+                  <span>Opacité</span>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={1}
+                    step={0.05}
+                    value={plancheOpacity}
+                    onChange={(e) => setPlancheOpacity(Number(e.target.value))}
+                  />
+                </label>
+                <button className="btn btn-sm" onClick={() => setCalibrating((c) => !c)}>
+                  {calibrating ? "Fermer le calage" : "Caler la planche"}
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      <button
+        className={`map-btn measure-btn ${drawMode ? "is-active" : ""}`}
+        onClick={() => {
+          const on = !drawMode;
+          setDrawMode(on);
+          if (!on) resetDraw();
+          setMenuOpen(false);
+        }}
+        aria-pressed={drawMode}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden>
+          <path d="M3 21 21 3" />
+          <path d="m7 17 2 2M11 13l2 2M15 9l2 2" />
+        </svg>
+        <span>{drawMode ? "Annuler la mesure" : "Dessiner un terrain"}</span>
+      </button>
+
+      {aucZonage && zoomTooLow && !drawMode && (
+        <button
+          className="zoom-hint"
+          onClick={() => mapRef.current?.easeTo({ zoom: ZOOM_MIN_AUC + 1 })}
+        >
+          Zoomez pour afficher le zonage <span aria-hidden>→</span>
+        </button>
+      )}
+
+      {aucZonage && !zoomTooLow && <Legend />}
+
       {planche && calibrating && (
         <PlancheCalibration bbox={bbox} setBbox={setBbox} onClose={() => setCalibrating(false)} />
       )}
       {drawMode && (
         <div className="draw-panel">
-          <strong>Mesure du terrain</strong>
+          <strong>Dessiner un terrain</strong>
           <div className="draw-help">
             {drawFinalized
               ? "Polygone fermé."
               : drawPoints.length === 0
-                ? "Cliquez sur la carte pour poser le 1er sommet."
+                ? "Cliquez sur la carte pour placer le premier coin du terrain."
                 : `${drawPoints.length} sommet${drawPoints.length > 1 ? "s" : ""} · double-clic ou Entrée pour fermer.`}
           </div>
           {drawArea != null && (
@@ -974,18 +1065,18 @@ export function MapView({ onParcelSelect }: Props) {
           )}
           <div className="draw-actions">
             {drawPoints.length > 0 && !drawFinalized && drawPoints.length >= 3 && (
-              <button className="btn-mini" onClick={() => setDrawFinalized(true)}>
+              <button className="btn btn-sm" onClick={() => setDrawFinalized(true)}>
                 Terminer
               </button>
             )}
             {drawPoints.length > 0 && (
-              <button className="btn-mini" onClick={resetDraw}>
+              <button className="btn btn-sm" onClick={resetDraw}>
                 Effacer
               </button>
             )}
             {drawFinalized && drawArea != null && (
-              <button className="btn-mini btn-primary" onClick={useDrawAsParcel}>
-                ▶ Simuler
+              <button className="btn btn-sm primary" onClick={useDrawAsParcel}>
+                Simuler ce terrain
               </button>
             )}
           </div>

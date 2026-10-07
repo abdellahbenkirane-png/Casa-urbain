@@ -1,79 +1,115 @@
 import { useState } from "react";
-import { getZone } from "./zones";
+import { getZone, familleOf, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
 import { FicheModal } from "./FicheModal";
 import type { ParcelleProperties } from "../map/MapView";
 
 const fmtPct = (v: number) => `${(v * 100).toFixed(0)} %`;
 const fmtM = (v: number) => `${v} m`;
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const fmtM2 = (v: number) => `${v.toLocaleString("fr-FR")} m²`;
 
-export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
-  const zone = getZone(parcelle.zone);
-  const [ficheOpen, setFicheOpen] = useState(false);
+export function ZoneBadge({ code }: { code: string }) {
+  const color = FAMILLE_COLORS[familleOf(code)] ?? "#94a3b8";
+  return (
+    <span className="zone-badge" style={{ background: color }}>
+      {code}
+    </span>
+  );
+}
 
-  if (!zone) {
-    return (
-      <div className="zone-card">
-        <span className="zone-code">{parcelle.zone}</span>
-        <p>Zone non documentée dans le règlement actuel.</p>
-      </div>
-    );
-  }
-
+/** Règles clés sous forme de liste — partagé avec le simulateur. */
+export function zoneRules(code: string): { label: string; value: string }[] {
+  const zone = getZone(code);
+  if (!zone) return [];
   const p = zone.parametres;
   const rows: { label: string; value: string }[] = [];
   if (p.hauteurMaxM != null)
     rows.push({
       label: "Hauteur max",
-      value: `${fmtM(p.hauteurMaxM)}${p.nombreEtagesMax ? ` (RDC+${p.nombreEtagesMax})` : ""}`,
+      value: `${fmtM(p.hauteurMaxM)}${p.nombreEtagesMax ? ` · R+${p.nombreEtagesMax}` : ""}`,
     });
   if (p.hauteurHotelBureauM != null)
     rows.push({
-      label: "Hauteur hôtel/bureau",
-      value: `${fmtM(p.hauteurHotelBureauM)}${p.etagesHotelBureau ? ` (RDC+${p.etagesHotelBureau})` : ""}`,
+      label: "Hôtel / bureaux",
+      value: `${fmtM(p.hauteurHotelBureauM)}${p.etagesHotelBureau ? ` · R+${p.etagesHotelBureau}` : ""}`,
     });
   if (p.surfaceMinParcelleM2 != null)
-    rows.push({ label: "Parcelle min.", value: fmtM2(p.surfaceMinParcelleM2) });
-  if (p.facadeMinM != null) rows.push({ label: "Façade min.", value: fmtM(p.facadeMinM) });
+    rows.push({ label: "Terrain minimum", value: fmtM2(p.surfaceMinParcelleM2) });
+  if (p.facadeMinM != null) rows.push({ label: "Façade minimum", value: fmtM(p.facadeMinM) });
   if (p.mixiteSocialePct != null)
-    rows.push({ label: "Mixité sociale", value: fmtPct(p.mixiteSocialePct) });
+    rows.push({ label: "Logement social", value: fmtPct(p.mixiteSocialePct) });
   if (p.linealFacadeMinPct != null)
     rows.push({ label: "Linéaire façade min.", value: fmtPct(p.linealFacadeMinPct) });
+  return rows;
+}
+
+export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
+  const zone = getZone(parcelle.zone);
+  const [ficheOpen, setFicheOpen] = useState(false);
+  const famille = familleOf(parcelle.zone);
+  const familleInfo = FAMILLE_LABELS[famille];
+
+  if (!zone) {
+    return (
+      <section className="card">
+        <h3 className="card-title">
+          {familleInfo ? familleInfo.nom : `Secteur ${parcelle.zone}`}
+        </h3>
+        {familleInfo && <p className="card-text">{familleInfo.description}</p>}
+        <div className="notice info">
+          Le règlement détaillé du secteur <strong>{parcelle.zone}</strong> n'est pas encore
+          intégré. La simulation utilise des valeurs par défaut que vous pouvez ajuster.
+        </div>
+      </section>
+    );
+  }
+
+  const rows = zoneRules(parcelle.zone);
+  const p = zone.parametres;
 
   return (
     <>
-      <div className="zone-card">
-        <span className="zone-code">{zone.code}</span>
-        <h3>{zone.nom}</h3>
-        <p>{zone.description}</p>
+      <section className="card">
+        <h3 className="card-title">{capitalize(zone.nom.replace(/^[^—]+—\s*/, ""))}</h3>
+        <p className="card-text">{zone.description}</p>
         {rows.length > 0 && (
-          <dl className="zone-grid">
-            {rows.flatMap((r, i) => [
-              <dt key={`dt-${i}`}>{r.label}</dt>,
-              <dd key={`dd-${i}`}>{r.value}</dd>,
-            ])}
+          <dl className="rule-grid">
+            {rows.map((r) => (
+              <div key={r.label}>
+                <dt>{r.label}</dt>
+                <dd>{r.value}</dd>
+              </div>
+            ))}
           </dl>
         )}
-        <p style={{ marginTop: 12, fontSize: 11 }}>
-          <strong>Usages autorisés :</strong> {zone.usagesAutorises.join(", ")}
-        </p>
+      </section>
+
+      <section className="card">
+        <h4 className="card-subtitle">Autorisé</h4>
+        <ul className="chips ok">
+          {zone.usagesAutorises.map((u) => (
+            <li key={u}>{u}</li>
+          ))}
+        </ul>
         {zone.usagesInterdits.length > 0 && (
-          <p style={{ marginTop: 6, fontSize: 11, color: "var(--danger)" }}>
-            <strong>Interdits :</strong> {zone.usagesInterdits.join(", ")}
-          </p>
+          <>
+            <h4 className="card-subtitle">Interdit</h4>
+            <ul className="chips ko">
+              {zone.usagesInterdits.map((u) => (
+                <li key={u}>{u}</li>
+              ))}
+            </ul>
+          </>
         )}
-        {p.remarque && (
-          <p style={{ marginTop: 8, fontSize: 11, fontStyle: "italic", color: "var(--muted)" }}>
-            {p.remarque}
-          </p>
-        )}
-        {zone.fichePages && zone.fichePages.length > 0 && (
-          <button className="btn-fiche" onClick={() => setFicheOpen(true)}>
-            📄 Voir la fiche officielle ({zone.fichePages.length} page
-            {zone.fichePages.length > 1 ? "s" : ""})
-          </button>
-        )}
-      </div>
+        {p.remarque && <p className="card-note">{p.remarque}</p>}
+      </section>
+
+      {zone.fichePages && zone.fichePages.length > 0 && (
+        <button className="btn block" onClick={() => setFicheOpen(true)}>
+          Voir la fiche officielle ({zone.fichePages.length} page
+          {zone.fichePages.length > 1 ? "s" : ""})
+        </button>
+      )}
       {ficheOpen && zone.fichePages && (
         <FicheModal
           title={zone.nom}

@@ -59,15 +59,16 @@ export function Comparator() {
   const best = rows.reduce((a, b) => (a.resultat > b.resultat ? a : b));
 
   return (
-    <details className="comparator" open>
-      <summary>Comparaison ({rows.length} scénarios)</summary>
-      <table className="compare-table">
+    <details open>
+      <summary>Comparer les scénarios ({rows.length})</summary>
+      <div className="table-scroll">
+      <table className="data-table compare">
         <thead>
           <tr>
             <th>Scénario</th>
-            <th>CA HT</th>
-            <th>Charges</th>
-            <th>Résultat</th>
+            <th>Ventes HT</th>
+            <th>Coûts</th>
+            <th>Bénéfice</th>
             <th>Marge</th>
             <th>ROE</th>
             <th>TRI</th>
@@ -89,6 +90,7 @@ export function Comparator() {
           ))}
         </tbody>
       </table>
+      </div>
     </details>
   );
 }

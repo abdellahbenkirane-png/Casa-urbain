@@ -5,7 +5,7 @@ interface Props {
   onChange: (next: SimulationInput) => void;
 }
 
-const NumInput = ({
+export const NumInput = ({
   value,
   onChange,
   step = 1,
@@ -27,7 +27,7 @@ const NumInput = ({
   </div>
 );
 
-const PctInput = ({
+export const PctInput = ({
   value,
   onChange,
 }: {
@@ -51,21 +51,7 @@ export function SimulatorForm({ input, onChange }: Props) {
 
   return (
     <div className="form">
-      <details open>
-        <summary>Identification</summary>
-        <div className="form-grid">
-          <label>
-            <span>Nom du scénario</span>
-            <input
-              type="text"
-              value={input.nom}
-              onChange={(e) => onChange({ ...input, nom: e.target.value })}
-            />
-          </label>
-        </div>
-      </details>
-
-      <details open>
+      <details>
         <summary>Terrain</summary>
         <div className="form-grid">
           <label>
@@ -99,14 +85,14 @@ export function SimulatorForm({ input, onChange }: Props) {
         </div>
       </details>
 
-      <details open>
-        <summary>Ventes</summary>
+      <details>
+        <summary>Ventes · prix et surfaces</summary>
         <table className="row-table">
           <thead>
             <tr>
               <th>Libellé</th>
-              <th>Prix TTC (DH/m²)</th>
-              <th>Surface (m²)</th>
+              <th>Prix TTC DH/m²</th>
+              <th>Surface m²</th>
               <th></th>
             </tr>
           </thead>
@@ -148,6 +134,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 <td>
                   <button
                     className="btn-icon"
+                    aria-label="Supprimer la ligne"
                     onClick={() =>
                       onChange({ ...input, ventes: input.ventes.filter((_, j) => j !== i) })
                     }
@@ -175,14 +162,14 @@ export function SimulatorForm({ input, onChange }: Props) {
         </button>
       </details>
 
-      <details open>
-        <summary>Constructions</summary>
+      <details>
+        <summary>Construction · coûts et surfaces</summary>
         <table className="row-table">
           <thead>
             <tr>
               <th>Libellé</th>
-              <th>Prix HT (DH/m²)</th>
-              <th>Surface (m²)</th>
+              <th>Prix HT DH/m²</th>
+              <th>Surface m²</th>
               <th></th>
             </tr>
           </thead>
@@ -224,6 +211,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 <td>
                   <button
                     className="btn-icon"
+                    aria-label="Supprimer la ligne"
                     onClick={() =>
                       onChange({
                         ...input,
@@ -295,7 +283,7 @@ export function SimulatorForm({ input, onChange }: Props) {
       </details>
 
       <details>
-        <summary>1. Hypothèses · Acquisition</summary>
+        <summary>Frais d'acquisition</summary>
         <div className="form-grid">
           <label>
             <span>Enregistrement</span>
@@ -317,7 +305,7 @@ export function SimulatorForm({ input, onChange }: Props) {
       </details>
 
       <details>
-        <summary>2. Hypothèses · Autorisations</summary>
+        <summary>Études et autorisations</summary>
         <div className="form-grid">
           <label>
             <span>Études</span>
@@ -356,7 +344,7 @@ export function SimulatorForm({ input, onChange }: Props) {
       </details>
 
       <details>
-        <summary>3. Hypothèses · Charges financières</summary>
+        <summary>Financement</summary>
         <div className="form-grid">
           <label>
             <span>Taux charges fin.</span>
@@ -393,7 +381,7 @@ export function SimulatorForm({ input, onChange }: Props) {
       </details>
 
       <details>
-        <summary>4. Hypothèses · Charges liées à la vente</summary>
+        <summary>Frais de vente</summary>
         <div className="form-grid">
           <label>
             <span>Compteur général</span>
@@ -422,10 +410,10 @@ export function SimulatorForm({ input, onChange }: Props) {
       </details>
 
       <details>
-        <summary>5. Hypothèses · Impôts &amp; Taxes</summary>
+        <summary>Impôts et taxes</summary>
         <div className="form-grid">
           <label>
-            <span>IS</span>
+            <span>Impôt sur les sociétés</span>
             <PctInput value={input.hypotheses.tauxIs} onChange={(v) => setH({ tauxIs: v })} />
           </label>
           <label>
