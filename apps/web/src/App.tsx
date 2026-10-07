@@ -72,11 +72,29 @@ export function App() {
                   </p>
                 </div>
               </div>
-              <button className="icon-btn" onClick={close} aria-label="Fermer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="parcel-header-actions">
+                {/* Mobile : calculateur plein écran (carte masquée), ou retour à la carte. */}
+                {sheet === "full" ? (
+                  <button className="pill-btn mobile-only" onClick={() => setSheet("peek")}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden>
+                      <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
+                      <path d="M9 4v14M15 6v14" />
+                    </svg>
+                    Carte
+                  </button>
+                ) : (
+                  <button className="icon-btn mobile-only" onClick={() => setSheet("full")} aria-label="Plein écran">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                    </svg>
+                  </button>
+                )}
+                <button className="icon-btn" onClick={close} aria-label="Fermer">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </header>
 
             <div className="tabs-bar" role="tablist">

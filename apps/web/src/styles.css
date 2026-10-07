@@ -918,7 +918,13 @@ input[type="number"] { -moz-appearance: textfield; }
   }
   .panel.sheet-peek { height: var(--sheet-peek); overflow: hidden; }
   .panel.sheet-half { height: 58dvh; }
-  .panel.sheet-full { height: calc(100dvh - 64px); }
+  /* Plein écran : le calculateur couvre toute la carte (barre de recherche comprise). */
+  .panel.sheet-full {
+    height: 100dvh;
+    border-radius: 0;
+    z-index: 40;
+    padding-top: env(safe-area-inset-top);
+  }
 
   .sheet-handle {
     display: grid;
@@ -1006,3 +1012,24 @@ input[type="number"] { -moz-appearance: textfield; }
 .notice.error { background: var(--bad-soft); border-left: 3px solid var(--bad); }
 .notice.error strong { display: block; color: var(--bad); margin-bottom: 4px; }
 .notice.error li.error { color: var(--text); }
+
+/* En-tête parcelle : actions (plein écran mobile, fermer) */
+.parcel-header-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.mobile-only { display: none; }
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-weight: 500;
+  font-size: 13px;
+}
+.pill-btn:hover { background: var(--surface-2); }
+@media (max-width: 768px) {
+  .mobile-only { display: inline-flex; }
+  .icon-btn.mobile-only { display: grid; }
+}
