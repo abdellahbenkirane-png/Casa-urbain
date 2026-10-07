@@ -26,17 +26,20 @@ export default defineConfig({
         // Stratégie : cache les tuiles et les assets statiques agressivement,
         // mais bypass le cache pour l'API AUC (donnée live) et l'API Vercel.
         navigateFallback: "/index.html",
+        // Nouvelle version active immédiatement (sans attendre la fermeture
+        // de tous les onglets) et purge des anciens précaches.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            urlPattern: ({ url }) =>
-              url.host === "a.basemaps.cartocdn.com" ||
-              url.host === "b.basemaps.cartocdn.com" ||
-              url.host === "c.basemaps.cartocdn.com" ||
-              url.host === "server.arcgisonline.com",
+            urlPattern: ({ url }) => url.host === "server.arcgisonline.com",
             handler: "CacheFirst",
             options: {
-              cacheName: "tile-cache",
+              // v2 : l'ancien cache contenait des tuiles CARTO « API KEY REQUIRED ».
+              cacheName: "tile-cache-v2",
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              cacheableResponse: { statuses: [200] },
             },
           },
           {

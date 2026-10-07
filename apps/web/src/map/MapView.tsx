@@ -253,15 +253,16 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           sources: {
             base: {
               type: "raster",
+              // Esri World Street Map : sans clé API (CARTO en exige une
+              // depuis 2026 et renvoie des tuiles « API KEY REQUIRED »).
               tiles: [
-                "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
               ],
               tileSize: 256,
               minzoom: 0,
               maxzoom: 19,
-              attribution: "© OpenStreetMap contributors © CARTO",
+              attribution:
+                "Tiles © Esri — Source: Esri, HERE, Garmin, USGS, Intermap, INCREMENT P, NRCan, METI, OpenStreetMap contributors",
             },
             satellite: {
               type: "raster",
@@ -280,8 +281,9 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
             },
           },
           layers: [
-            { id: "base", type: "raster", source: "base" },
-            { id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" } },
+            // Satellite par défaut (cf. useState) : pas de flash du fond Plan au chargement.
+            { id: "base", type: "raster", source: "base", layout: { visibility: "none" } },
+            { id: "satellite", type: "raster", source: "satellite" },
           ],
         },
         // Casablanca centre — zoom assez large pour couvrir l'ensemble
