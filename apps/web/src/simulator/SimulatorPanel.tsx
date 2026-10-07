@@ -162,7 +162,7 @@ export function SimulatorPanel({
         </section>
       )}
 
-      <KeyInputs input={draft} onChange={onChange} defaultSurface={defaultSurface} />
+      <KeyInputs input={draft} onChange={onChange} defaultSurface={defaultSurface} zone={parcelle.zone} />
 
       <div className="accordion">
         <details>

@@ -5,6 +5,7 @@ import { fetchZonage } from "./aucService";
 import { SearchBar } from "./SearchBar";
 import { Legend } from "./Legend";
 import { AUTRE_COLOR, FAMILLE_COLORS as ZONE_COLORS } from "../zoning/zones";
+import { prixTerrainOf, surfaceParDefaut } from "../simulator/zoneProfiles";
 
 const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
 
@@ -25,20 +26,6 @@ export interface ParcelleProperties {
   prefecture?: string;
 }
 
-// Prix de terrain médian estimé par famille de zone (DH/m²).
-// À remplacer par des références marché réelles une fois disponibles.
-const PRIX_PAR_FAMILLE: Record<string, number> = {
-  A: 23000,
-  B: 18000,
-  C: 16000,
-  D: 15000,
-  E: 12000,
-  I: 8000,
-  PB: 14000,
-  PU: 17000,
-  S: 10000,
-  ZR: 11000,
-};
 
 const ZOOM_MIN_AUC = 13;
 
@@ -46,12 +33,6 @@ interface BBox { W: number; E: number; S: number; N: number }
 
 const DEFAULT_BBOX: BBox = { W: -7.673, E: -7.566, S: 33.4685, N: 33.5843 };
 
-function familleOfSecteur(secteur: string): string {
-  if (secteur.startsWith("PB")) return "PB";
-  if (secteur.startsWith("PU")) return "PU";
-  if (secteur.startsWith("ZR")) return "ZR";
-  return secteur.charAt(0).toUpperCase();
-}
 
 /**
  * Calcule la surface en m² d'un polygone donné en lng/lat (WGS 84) en
@@ -535,10 +516,10 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           const secteur = String(a.secteur ?? "").trim();
           if (!secteur) return;
           // L'attribut `area` est la surface du polygone de zone (souvent
-          // plusieurs hectares). Sur défaut on part d'une parcelle type
-          // 500 m² que l'utilisateur ajustera ensuite dans le formulaire.
-          const surface = 500;
-          const famille = familleOfSecteur(secteur);
+          // plusieurs hectares). Par défaut on part d'une parcelle type de
+          // 500 m², relevée au minimum réglementaire de la zone (ex. D4 :
+          // 1 000 m²), que l'utilisateur ajustera ensuite.
+          const surface = surfaceParDefaut(secteur);
           const prefecture = String(a.prefecture ?? "").trim();
           const commune = String(a.commune ?? "").trim();
           onParcelSelect({
@@ -546,7 +527,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
             adresse: `${commune || prefecture || "Casablanca"} · secteur ${secteur}`,
             zone: secteur,
             surface,
-            prixTerrainMedianDhM2: PRIX_PAR_FAMILLE[famille] ?? 15000,
+            prixTerrainMedianDhM2: prixTerrainOf(secteur),
             prefecture: prefecture || undefined,
           });
         });
@@ -791,7 +772,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
       adresse: commune ? `Terrain dessiné · ${commune}` : "Terrain dessiné à la main",
       zone,
       surface: Math.round(drawArea),
-      prixTerrainMedianDhM2: PRIX_PAR_FAMILLE[familleOfSecteur(zone)] ?? 15000,
+      prixTerrainMedianDhM2: prixTerrainOf(zone),
       prefecture,
     });
   };

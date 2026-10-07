@@ -1,5 +1,6 @@
 import type { SimulationInput } from "@casa/core";
 import { NumInput } from "./SimulatorForm";
+import { resumeProgramme } from "./zoneProfiles";
 
 /** Lignes qui ne dépendent pas du nombre d'étages (RDC, sous-sol, terrasse). */
 const GROUND_LEVEL = /rdc|sous-sol|terrasse/i;
@@ -13,8 +14,11 @@ export function KeyInputs({
   input,
   onChange,
   defaultSurface,
+  zone,
 }: {
   input: SimulationInput;
+  /** Code de zone, pour rappeler le programme type retenu par défaut. */
+  zone: string;
   onChange: (next: SimulationInput) => void;
   /** true si la surface vient d'une valeur par défaut, pas du terrain réel. */
   defaultSurface: boolean;
@@ -54,7 +58,10 @@ export function KeyInputs({
 
   return (
     <section className="card">
-      <h3 className="card-title">Votre projet</h3>
+      <div>
+        <h3 className="card-title">Votre projet</h3>
+        <p className="section-help">Par défaut : {resumeProgramme(zone)}</p>
+      </div>
       <div className="field-grid">
         <label className={defaultSurface ? "needs-input" : ""}>
           <span>Surface du terrain</span>
@@ -82,8 +89,13 @@ export function KeyInputs({
               step={500}
               suffix="DH/m²"
               onChange={(v) => {
-                const ventes = [...input.ventes];
-                ventes[vi] = { ...vente, prixTtcDhParM2: v };
+                // Les lignes de logement au même prix (ex. « Petites unités »
+                // en zone à mixité) suivent le prix principal.
+                const ventes = input.ventes.map((l, i) =>
+                  i === vi || (l.prixTtcDhParM2 === vente.prixTtcDhParM2 && !/commerc|local/i.test(l.libelle))
+                    ? { ...l, prixTtcDhParM2: v }
+                    : l,
+                );
                 onChange({ ...input, ventes });
               }}
             />
