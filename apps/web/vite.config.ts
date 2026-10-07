@@ -23,8 +23,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Stratégie : cache les tuiles et les assets statiques agressivement,
-        // mais bypass le cache pour l'API AUC (donnée live) et l'API Vercel.
+        // Stratégie : cache les tuiles et les assets statiques agressivement ;
+        // le zonage AUC en stale-while-revalidate.
         navigateFallback: "/index.html",
         // Nouvelle version active immédiatement (sans attendre la fermeture
         // de tous les onglets) et purge des anciens précaches.
@@ -48,8 +48,15 @@ export default defineConfig({
             options: { cacheName: "data-cache" },
           },
           {
+            // Carrés de zonage : affichage instantané depuis le cache, puis
+            // mise à jour en arrière-plan (le zonage change rarement).
             urlPattern: /\/api\/auc/,
-            handler: "NetworkOnly",
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "auc-zonage-v1",
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [200] },
+            },
           },
         ],
       },

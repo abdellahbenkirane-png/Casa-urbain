@@ -34,7 +34,15 @@ export default async function handler(req, res) {
 
     res.setHeader("content-type", "application/json; charset=utf-8");
     res.setHeader("access-control-allow-origin", "*");
-    res.setHeader("cache-control", "public, s-maxage=300, stale-while-revalidate=3600");
+    // Le zonage change rarement et le client demande des carrés fixes : on
+    // garde chaque réponse 1 jour au CDN, resservie 7 jours pendant qu'elle se
+    // rafraîchit. Les erreurs ne sont pas mises en cache.
+    res.setHeader(
+      "cache-control",
+      upstream.ok
+        ? "public, s-maxage=86400, stale-while-revalidate=604800"
+        : "no-store",
+    );
     res.status(upstream.status).send(body);
   } catch (e) {
     res.status(502).json({

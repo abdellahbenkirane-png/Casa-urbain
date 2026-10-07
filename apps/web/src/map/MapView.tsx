@@ -337,23 +337,24 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           paint: { "raster-opacity": 0, "raster-fade-duration": 0 },
         });
 
-        // 1. Périmètre administratif (OSM)
-        try {
-          const perim = await fetch("/data/ainchock/perimetre.geojson").then((r) =>
-            r.ok ? r.json() : null,
-          );
-          if (perim) {
+        // 1. Périmètre administratif (OSM) — chargé en arrière-plan : ne bloque
+        // plus la création des calques suivants (zonage, clics).
+        fetch("/data/ainchock/perimetre.geojson")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((perim) => {
+            if (!perim || map.getSource("perimetre")) return;
             map.addSource("perimetre", { type: "geojson", data: perim });
-            map.addLayer({
-              id: "perimetre-line",
-              type: "line",
-              source: "perimetre",
-              paint: { "line-color": "#2f81f7", "line-width": 2, "line-dasharray": [3, 2] },
-            });
-          }
-        } catch (e) {
-          console.warn("[MapView] périmètre indisponible", e);
-        }
+            map.addLayer(
+              {
+                id: "perimetre-line",
+                type: "line",
+                source: "perimetre",
+                paint: { "line-color": "#2f81f7", "line-width": 2, "line-dasharray": [3, 2] },
+              },
+              map.getLayer("buildings-fill") ? "buildings-fill" : undefined,
+            );
+          })
+          .catch((e) => console.warn("[MapView] périmètre indisponible", e));
 
         // 2. Bâtiments OSM — source vide à l'init, données chargées
         // paresseusement depuis un useEffect quand l'utilisateur active
@@ -830,23 +831,31 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
   }, [aucZonage, aucCount]);
 
   // Récupération des features AUC quand zonage actif et que la carte bouge.
-  // Stratégie pour éviter les fetchs inutiles :
-  //   1. skip total si zoom < 13 (à zoom Casablanca-entière l'API renverrait
-  //      des milliers de polygones)
-  //   2. on fetche un bbox 50 % plus grand que le visible (tampon) ; tant
-  //      que le visible est dans ce tampon, aucun nouveau fetch
-  //   3. debounce 200 ms sur moveend pour éviter une rafale de requêtes
-  //      durant un pan rapide
+  // Stratégie :
+  //   1. rien sous le zoom 13 (la ville entière = des milliers de polygones,
+  //      que le serveur AUC refuse de toute façon) ;
+  //   2. la ville est découpée en carrés fixes (CELL_DEG) : chaque carré est
+  //      toujours la même requête → mise en cache par le CDN Vercel et le
+  //      service worker, réutilisable d'un visiteur à l'autre ;
+  //   3. carrés chargés en parallèle, affichés au fil de l'eau ;
+  //   4. debounce 200 ms sur moveend.
   const DEBOUNCE_MS = 200;
-  const BUFFER_FACTOR = 0.5; // étend chaque côté de 50 %
+  // ≈ 2,8 × 3,3 km. Au-delà de ~0,05° le serveur AUC devient lent et
+  // instable (timeouts, voire toute la ville renvoyée) ; en dessous il répond
+  // en < 1 s.
+  const CELL_DEG = 0.03;
+  const MAX_PARALLEL = 6;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !aucZonage) return;
-    let abort: AbortController | null = null;
     let cancelled = false;
-    let loaded: { W: number; E: number; S: number; N: number } | null = null;
+    const abort = new AbortController();
     const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
     let debounceId: ReturnType<typeof setTimeout> | null = null;
+    // Carrés chargés (clé "i,j" → features) et en cours de chargement.
+    const cells = new Map<string, GeoJSON.Feature[]>();
+    const inFlight = new Set<string>();
+    let failed = false;
 
     const setSourceData = (fc: GeoJSON.FeatureCollection, retries = 0) => {
       if (cancelled) return;
@@ -866,64 +875,89 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
       src.setData(fc);
     };
 
-    const contains = (
-      outer: { W: number; E: number; S: number; N: number },
-      inner: { W: number; E: number; S: number; N: number },
-    ) =>
-      outer.W <= inner.W &&
-      outer.E >= inner.E &&
-      outer.S <= inner.S &&
-      outer.N >= inner.N;
+    // Fusionne les carrés en dédoublonnant les zones à cheval sur 2 carrés.
+    const publish = () => {
+      const seen = new Set<unknown>();
+      const features: GeoJSON.Feature[] = [];
+      for (const list of cells.values()) {
+        for (const f of list) {
+          const id = f.properties?.aucId;
+          if (id != null && id !== 0) {
+            if (seen.has(id)) continue;
+            seen.add(id);
+          }
+          features.push(f);
+        }
+      }
+      setSourceData({ type: "FeatureCollection", features });
+      setAucCount(features.length);
+    };
+
+    const syncStatus = () => {
+      if (cancelled) return;
+      setAucStatus(inFlight.size > 0 ? "loading" : failed && cells.size === 0 ? "error" : "ok");
+    };
+
+    // Arrondi pour que la même cellule produise toujours la même URL (cache).
+    const edge = (k: number) => Number((k * CELL_DEG).toFixed(4));
+
+    const loadCell = async (i: number, j: number) => {
+      const key = `${i},${j}`;
+      inFlight.add(key);
+      syncStatus();
+      const bbox = { W: edge(i), E: edge(i + 1), S: edge(j), N: edge(j + 1) };
+      try {
+        // Le serveur AUC échoue parfois de façon transitoire : 1 nouvel essai.
+        const fc = await fetchZonage(bbox, abort.signal).catch((e) => {
+          if ((e as Error).name === "AbortError") throw e;
+          return fetchZonage(bbox, abort.signal);
+        });
+        if (cancelled) return;
+        cells.set(key, fc.features);
+        publish();
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        console.warn("[MapView] AUC zonage fetch failed", key, e);
+        failed = true;
+      } finally {
+        inFlight.delete(key);
+        syncStatus();
+      }
+    };
 
     const doFetch = async () => {
       if (cancelled) return;
       if (map.getZoom() < ZOOM_MIN_AUC) {
         setAucStatus("idle");
-        setAucCount(0);
-        loaded = null;
-        const src = map.getSource("auc-zonage") as maplibregl.GeoJSONSource | undefined;
-        if (src) src.setData({ type: "FeatureCollection", features: [] });
         return;
       }
       const b = map.getBounds();
-      const visible = {
-        W: b.getWest(),
-        E: b.getEast(),
-        S: b.getSouth(),
-        N: b.getNorth(),
-      };
-
-      // Si la zone visible est déjà incluse dans ce qui est chargé, on
-      // n'envoie aucune nouvelle requête.
-      if (loaded && contains(loaded, visible)) {
+      // Carrés visibles, centre d'abord : la zone regardée apparaît en premier.
+      const i0 = Math.floor(b.getWest() / CELL_DEG);
+      const i1 = Math.floor(b.getEast() / CELL_DEG);
+      const j0 = Math.floor(b.getSouth() / CELL_DEG);
+      const j1 = Math.floor(b.getNorth() / CELL_DEG);
+      const ci = (i0 + i1) / 2;
+      const cj = (j0 + j1) / 2;
+      const todo: [number, number][] = [];
+      for (let i = i0; i <= i1; i++)
+        for (let j = j0; j <= j1; j++)
+          if (!cells.has(`${i},${j}`) && !inFlight.has(`${i},${j}`)) todo.push([i, j]);
+      todo.sort((a, c) => Math.hypot(a[0] - ci, a[1] - cj) - Math.hypot(c[0] - ci, c[1] - cj));
+      if (todo.length === 0) {
+        syncStatus();
         return;
       }
-
-      // Sinon on fetche un bbox étendu (1+2*buffer)× la vue actuelle.
-      const dw = (visible.E - visible.W) * BUFFER_FACTOR;
-      const dh = (visible.N - visible.S) * BUFFER_FACTOR;
-      const buffered = {
-        W: visible.W - dw,
-        E: visible.E + dw,
-        S: visible.S - dh,
-        N: visible.N + dh,
+      failed = false;
+      // File d'attente à MAX_PARALLEL requêtes simultanées.
+      let next = 0;
+      const worker = async () => {
+        while (!cancelled && next < todo.length) {
+          const [i, j] = todo[next++]!;
+          await loadCell(i, j);
+        }
       };
-
-      abort?.abort();
-      abort = new AbortController();
-      setAucStatus("loading");
-      try {
-        const fc = await fetchZonage(buffered, abort.signal);
-        if (cancelled) return;
-        setSourceData(fc);
-        setAucCount(fc.features.length);
-        setAucStatus("ok");
-        loaded = buffered;
-      } catch (e) {
-        if ((e as Error).name === "AbortError") return;
-        console.warn("[MapView] AUC zonage fetch failed", e);
-        setAucStatus("error");
-      }
+      await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL, todo.length) }, worker));
     };
 
     const refresh = () => {
@@ -936,7 +970,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
     map.on("moveend", refresh);
     return () => {
       cancelled = true;
-      abort?.abort();
+      abort.abort();
       if (debounceId !== null) clearTimeout(debounceId);
       map.off("moveend", refresh);
       for (const t of pendingTimers) clearTimeout(t);
