@@ -190,7 +190,14 @@ function esc(s: string): string {
 }
 
 function sanitize(s: string): string {
-  return s.replace(/[^a-zA-Z0-9-_]+/g, "_").slice(0, 60) || "scenario";
+  // « Scénario » → « Scenario » plutôt que « Sc_nario » : on retire les accents d'abord.
+  return (
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9-_]+/g, "_")
+      .slice(0, 60) || "scenario"
+  );
 }
 
 function triggerDownload(blob: Blob, filename: string) {

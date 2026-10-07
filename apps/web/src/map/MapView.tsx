@@ -4,7 +4,7 @@ import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
 import { fetchZonage } from "./aucService";
 import { SearchBar } from "./SearchBar";
 import { Legend } from "./Legend";
-import { FAMILLE_COLORS as ZONE_COLORS } from "../zoning/zones";
+import { AUTRE_COLOR, FAMILLE_COLORS as ZONE_COLORS } from "../zoning/zones";
 
 const PARCELLES_DATA = JSON.parse(parcellesRaw) as GeoJSON.FeatureCollection;
 
@@ -415,7 +415,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           "PU", ZONE_COLORS.PU!,
           "S", ZONE_COLORS.S!,
           "ZR", ZONE_COLORS.ZR!,
-          "#888", // gris discret pour les familles non répertoriées
+          AUTRE_COLOR, // familles non répertoriées (ZUG, RA, TVR…)
         ];
         map.addLayer({
           id: "auc-zonage-fill",
@@ -455,7 +455,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           "PU", ZONE_COLORS.PU!,
           "S", ZONE_COLORS.S!,
           "ZR", ZONE_COLORS.ZR!,
-          "#888",
+          AUTRE_COLOR,
         ];
         map.addLayer({
           id: "parcelles-fill",
@@ -656,7 +656,9 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
       map.setLayoutProperty("base", "visibility", satellite ? "none" : "visible");
       map.setLayoutProperty("satellite", "visibility", satellite ? "visible" : "none");
     };
-    if (map.loaded()) apply();
+    // Pas map.loaded() : il reste false tant que des tuiles chargent, et
+    // « load » ne se déclenche qu'une fois → la bascule était ignorée.
+    if (map.getLayer("base")) apply();
     else map.once("load", apply);
   }, [satellite]);
 
@@ -764,12 +766,33 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
   };
   const useDrawAsParcel = () => {
     if (!drawArea) return;
+    // Zone = celle sous le centre du terrain dessiné (zonage AUC, sinon
+    // parcelles de démo). Avant, on supposait A6 partout, ce qui appliquait
+    // le règlement d'Aïn Chock à n'importe quel terrain.
+    const map = mapRef.current;
+    let zone = "?";
+    let prefecture: string | undefined;
+    let commune = "";
+    if (map && drawPoints.length > 0) {
+      const lng = drawPoints.reduce((a, p) => a + p[0], 0) / drawPoints.length;
+      const lat = drawPoints.reduce((a, p) => a + p[1], 0) / drawPoints.length;
+      const layers = ["parcelles-fill", "auc-zonage-fill"].filter(
+        (l) => map.getLayer(l) && map.getLayoutProperty(l, "visibility") !== "none",
+      );
+      const hit = map.queryRenderedFeatures(map.project([lng, lat]), { layers })[0];
+      const a = (hit?.properties ?? {}) as Record<string, unknown>;
+      const code = String(a.secteur ?? a.zone ?? "").trim();
+      if (code) zone = code;
+      prefecture = String(a.prefecture ?? "").trim() || undefined;
+      commune = String(a.commune ?? "").trim();
+    }
     onParcelSelect({
       id: `MESURE-${Date.now().toString(36)}`,
-      adresse: "Parcelle dessinée à la main",
-      zone: "A6",
+      adresse: commune ? `Terrain dessiné · ${commune}` : "Terrain dessiné à la main",
+      zone,
       surface: Math.round(drawArea),
-      prixTerrainMedianDhM2: 18000,
+      prixTerrainMedianDhM2: PRIX_PAR_FAMILLE[familleOfSecteur(zone)] ?? 15000,
+      prefecture,
     });
   };
 
@@ -1043,6 +1066,12 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
         >
           Zoomez pour afficher le zonage <span aria-hidden>→</span>
         </button>
+      )}
+
+      {aucZonage && !zoomTooLow && aucStatus === "loading" && !drawMode && (
+        <div className="map-status" role="status">
+          <span className="spinner" aria-hidden /> Chargement du zonage…
+        </div>
       )}
 
       {aucZonage && !zoomTooLow && <Legend />}

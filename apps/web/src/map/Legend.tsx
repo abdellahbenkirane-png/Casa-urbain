@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FAMILLE_COLORS, FAMILLE_LABELS } from "../zoning/zones";
+import { AUTRE_COLOR, AUTRE_LABEL, FAMILLE_COLORS, FAMILLE_LABELS } from "../zoning/zones";
 
 const ORDER = ["A", "B", "C", "D", "E", "S", "I", "PU", "PB", "ZR"];
 
@@ -27,6 +27,11 @@ export function Legend() {
               <code>{f}</code>
             </li>
           ))}
+          <li title={AUTRE_LABEL.description}>
+            <i style={{ background: AUTRE_COLOR }} />
+            <span>{AUTRE_LABEL.nom}</span>
+            <code>…</code>
+          </li>
         </ul>
       )}
     </div>

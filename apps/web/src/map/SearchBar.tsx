@@ -30,6 +30,9 @@ export function SearchBar({ getMap }: Props) {
   const [loading, setLoading] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  // Le libellé écrit dans le champ après une sélection ne doit pas relancer
+  // une recherche (sinon la liste se rouvre par-dessus la carte).
+  const skipSearchRef = useRef(false);
 
   // Ferme le dropdown si on clique en dehors
   useEffect(() => {
@@ -42,6 +45,10 @@ export function SearchBar({ getMap }: Props) {
 
   // Recherche Nominatim avec debounce 300 ms
   useEffect(() => {
+    if (skipSearchRef.current) {
+      skipSearchRef.current = false;
+      return;
+    }
     if (q.trim().length < 3) {
       setResults([]);
       return;
@@ -90,6 +97,7 @@ export function SearchBar({ getMap }: Props) {
     if (Number.isFinite(lng) && Number.isFinite(lat)) {
       map.flyTo({ center: [lng, lat], zoom: 17, duration: 900 });
     }
+    skipSearchRef.current = true;
     setQ(r.display_name.split(",")[0] ?? r.display_name);
     setOpen(false);
     setResults([]);

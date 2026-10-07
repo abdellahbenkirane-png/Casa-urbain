@@ -143,9 +143,11 @@ export function SimulatorPanel({
       <Verdict result={result} />
 
       {violations.length > 0 && (
-        <section className="notice warn">
+        <section className={`notice ${violations.some((v) => v.severity === "error") ? "error" : "warn"}`}>
           <strong>
-            {violations.length} point{violations.length > 1 ? "s" : ""} à vérifier avec le règlement
+            {violations.some((v) => v.severity === "error")
+              ? "Ce projet n'est pas conforme au règlement de la zone"
+              : `${violations.length} point${violations.length > 1 ? "s" : ""} à vérifier avec le règlement`}
           </strong>
           <ul>
             {violations.map((v, i) => (

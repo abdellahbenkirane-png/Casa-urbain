@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { SimulationInput, Hypotheses } from "@casa/core";
 
 interface Props {
@@ -15,17 +16,31 @@ export const NumInput = ({
   onChange: (v: number) => void;
   step?: number;
   suffix?: string;
-}) => (
-  <div className="num-input">
-    <input
-      type="number"
-      step={step}
-      value={Number.isFinite(value) ? value : 0}
-      onChange={(e) => onChange(Number(e.target.value) || 0)}
-    />
-    {suffix && <span className="suffix">{suffix}</span>}
-  </div>
-);
+}) => {
+  // Texte local : on peut vider le champ pour retaper une valeur sans qu'un
+  // « 0 » réapparaisse aussitôt. Le modèle reçoit 0 tant que c'est vide.
+  const [text, setText] = useState(() => (Number.isFinite(value) ? String(value) : "0"));
+  useEffect(() => {
+    if ((Number(text) || 0) !== value) setText(Number.isFinite(value) ? String(value) : "0");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  return (
+    <div className="num-input">
+      <input
+        type="number"
+        inputMode="decimal"
+        step={step}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(Number(e.target.value) || 0);
+        }}
+        onBlur={() => text === "" && setText("0")}
+      />
+      {suffix && <span className="suffix">{suffix}</span>}
+    </div>
+  );
+};
 
 export const PctInput = ({
   value,

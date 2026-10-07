@@ -1,15 +1,14 @@
 export const fmtDh = (n: number) =>
   `${Math.round(n).toLocaleString("fr-FR")} DH`;
-export const fmtDhSigned = (n: number) => {
-  const s = Math.round(n).toLocaleString("fr-FR");
-  return n < 0 ? s : `+${s}`;
-};
+export const fmtDhSigned = (n: number) =>
+  `${n < 0 ? "−" : "+"}${Math.abs(Math.round(n)).toLocaleString("fr-FR")}`;
+// Format français : virgule décimale et vrai signe moins (−), comme fmtDhShort.
+const frNum = (n: number, digits: number) =>
+  Math.abs(n).toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 export const fmtPct = (n: number, digits = 1) =>
-  `${(n * 100).toFixed(digits)} %`;
-export const fmtPctSigned = (n: number, digits = 1) => {
-  const v = (n * 100).toFixed(digits);
-  return n < 0 ? `${v} %` : `+${v} %`;
-};
+  `${n < 0 ? "−" : ""}${frNum(n * 100, digits)} %`;
+export const fmtPctSigned = (n: number, digits = 1) =>
+  `${n < 0 ? "−" : "+"}${frNum(n * 100, digits)} %`;
 export const fmtM2 = (n: number) =>
   `${Math.round(n).toLocaleString("fr-FR")} m²`;
 /** Montant compact pour les gros chiffres : « 27,4 M DH », « 850 k DH ». */

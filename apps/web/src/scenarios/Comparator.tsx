@@ -38,7 +38,7 @@ export function Comparator() {
         id: s.id,
         nom: s.input.nom,
         ca: result.totaux.totalVentes,
-        charges: result.totaux.totalCharges,
+        charges: Math.abs(result.totaux.totalCharges),
         resultat: result.totaux.resultatNet,
         marge: result.totaux.margeNette,
         roe: result.totaux.roe,

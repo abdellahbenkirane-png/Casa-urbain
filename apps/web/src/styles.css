@@ -976,3 +976,33 @@ input[type="number"] { -moz-appearance: textfield; }
   .modal-actions { justify-content: space-between; flex-wrap: wrap; }
   .page-dots { flex-wrap: wrap; max-width: 60%; }
 }
+
+/* Secteurs hors familles connues : fond clair, texte foncé */
+.zone-badge.other { color: #3f3f46; text-shadow: none; border: 1px solid var(--border-strong); font-size: 12px; }
+
+.map-status {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+}
+@media (max-width: 768px) {
+  .map-status { left: 12px; transform: none; }
+}
+
+.notice.error { background: var(--bad-soft); border-left: 3px solid var(--bad); }
+.notice.error strong { display: block; color: var(--bad); margin-bottom: 4px; }
+.notice.error li.error { color: var(--text); }

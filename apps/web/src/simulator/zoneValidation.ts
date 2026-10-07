@@ -56,6 +56,29 @@ export function validate(input: SimulationInput, zoneCode: string): Violation[] 
     });
   }
 
+  // Usages interdits : le scénario type vend des appartements et un local
+  // commercial, ce qui est hors-règlement en zone villas (D1, D3, D4…).
+  const interdits = zone.usagesInterdits.map((u) => u.toLowerCase());
+  const vend = (re: RegExp) => input.ventes.some((l) => re.test(l.libelle) && l.superficieVendable > 0);
+  if (interdits.some((u) => u.includes("habitat collectif")) && vend(/appart/i)) {
+    v.push({
+      severity: "error",
+      field: "ventes",
+      message: `Immeuble d'appartements interdit en zone ${zone.code} (habitat collectif non autorisé). Adaptez le programme dans « Hypothèses détaillées ».`,
+      ruleValue: 0,
+      actualValue: 1,
+    });
+  }
+  if (interdits.some((u) => u === "commerce") && vend(/commerc|local/i)) {
+    v.push({
+      severity: "error",
+      field: "ventes",
+      message: `Commerces interdits en zone ${zone.code}.`,
+      ruleValue: 0,
+      actualValue: 1,
+    });
+  }
+
   // Note : les contrôles COS / CUS ont été désactivés à la demande de
   // l'utilisateur. Les valeurs restent dans pau-zones.json pour pouvoir
   // les réactiver une fois les règles de calcul (par étage / total)

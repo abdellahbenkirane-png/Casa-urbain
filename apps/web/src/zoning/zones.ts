@@ -46,8 +46,11 @@ export const FAMILLE_COLORS: Record<string, string> = {
   PB: "#84cc16",
   PU: "#dc2626",
   S: "#a16207",
-  ZR: "#94a3b8",
+  ZR: "#475569",
 };
+
+/** Secteurs AUC hors des familles ci-dessus (ZUG, RA, TVR, F, G…). */
+export const AUTRE_COLOR = "#e4e4e7";
 
 /** Libellés grand public par famille (légende + zones non documentées). */
 export const FAMILLE_LABELS: Record<string, { nom: string; description: string }> = {
@@ -61,6 +64,11 @@ export const FAMILLE_LABELS: Record<string, { nom: string; description: string }
   PU: { nom: "Projets urbains", description: "Grands projets soumis à un plan d'aménagement spécifique." },
   S: { nom: "Habitat traditionnel", description: "Secteur protégé d'habitat traditionnel." },
   ZR: { nom: "Restructuration", description: "Zone à restructurer, règles fixées par projet." },
+};
+
+export const AUTRE_LABEL = {
+  nom: "Autres zones",
+  description: "Secteur à règlement spécifique, non encore intégré dans le simulateur.",
 };
 
 export function familleOf(code: string): string {

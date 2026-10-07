@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getZone, familleOf, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
+import { getZone, familleOf, AUTRE_COLOR, AUTRE_LABEL, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
 import { FicheModal } from "./FicheModal";
 import type { ParcelleProperties } from "../map/MapView";
 
@@ -9,10 +9,11 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const fmtM2 = (v: number) => `${v.toLocaleString("fr-FR")} m²`;
 
 export function ZoneBadge({ code }: { code: string }) {
-  const color = FAMILLE_COLORS[familleOf(code)] ?? "#94a3b8";
+  const color = FAMILLE_COLORS[familleOf(code)] ?? AUTRE_COLOR;
+  const known = color !== AUTRE_COLOR;
   return (
-    <span className="zone-badge" style={{ background: color }}>
-      {code}
+    <span className={`zone-badge ${known ? "" : "other"}`} style={{ background: color }} title={code}>
+      {code.length > 5 ? code.slice(0, 4) + "…" : code}
     </span>
   );
 }
@@ -47,15 +48,26 @@ export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
   const zone = getZone(parcelle.zone);
   const [ficheOpen, setFicheOpen] = useState(false);
   const famille = familleOf(parcelle.zone);
-  const familleInfo = FAMILLE_LABELS[famille];
+  const familleInfo = FAMILLE_LABELS[famille] ?? AUTRE_LABEL;
+
+  if (parcelle.zone === "?") {
+    return (
+      <section className="card">
+        <h3 className="card-title">Zone non identifiée</h3>
+        <div className="notice info">
+          Aucune zone du PAU n'a été trouvée sous ce terrain. Vérifiez que le calque « Zonage
+          PAU » est activé et que le terrain se trouve dans une zone colorée. La simulation
+          utilise des valeurs par défaut.
+        </div>
+      </section>
+    );
+  }
 
   if (!zone) {
     return (
       <section className="card">
-        <h3 className="card-title">
-          {familleInfo ? familleInfo.nom : `Secteur ${parcelle.zone}`}
-        </h3>
-        {familleInfo && <p className="card-text">{familleInfo.description}</p>}
+        <h3 className="card-title">{familleInfo.nom}</h3>
+        <p className="card-text">{familleInfo.description}</p>
         <div className="notice info">
           Le règlement détaillé du secteur <strong>{parcelle.zone}</strong> n'est pas encore
           intégré. La simulation utilise des valeurs par défaut que vous pouvez ajuster.

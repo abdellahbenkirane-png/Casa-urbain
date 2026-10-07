@@ -37,8 +37,10 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [parcelle]);
 
+  // Réduit → moitié → plein écran → réduit. Le mode réduit garde l'en-tête de
+  // la parcelle visible : on revoit la carte sans perdre le brouillon en cours.
   const cycleSheet = () =>
-    setSheet((s) => (s === "peek" ? "half" : s === "half" ? "full" : parcelle ? "half" : "peek"));
+    setSheet((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"));
 
   return (
     <div className="layout">
