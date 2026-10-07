@@ -29,7 +29,9 @@
   --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.18);
   --radius: 12px;
   --radius-sm: 8px;
-  --panel-w: 440px;
+  /* Carte 15 % plus étroite qu'avec un panneau fixe de 440 px :
+     panneau = 440 + 15 % × (largeur − 440) = 374 px + 15vw. */
+  --panel-w: calc(374px + 15vw);
   --sheet-peek: 148px;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
@@ -898,7 +900,7 @@ input[type="number"] { -moz-appearance: textfield; }
    Tablette : panneau plus étroit
    ========================================================= */
 @media (max-width: 1100px) {
-  :root { --panel-w: 380px; }
+  :root { --panel-w: calc(323px + 15vw); } /* idem, base 380 px */
   .brand-text small { display: none; }
 }
 
