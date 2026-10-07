@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard, ZoneBadge } from "./zoning/ZoneCard";
+import { AuthModal } from "./cloud/AuthModal";
+import { useAccount } from "./cloud/account";
 
 // Code-split : le simulateur est chargé seulement au 1er clic sur une parcelle.
 // Économise ~80 kB sur le bundle initial.
@@ -16,6 +18,13 @@ export function App() {
   const [parcelle, setParcelle] = useState<ParcelleProperties | null>(null);
   const [sheet, setSheet] = useState<Sheet>("peek");
   const [tab, setTab] = useState<Tab>("simulation");
+
+  // Session de compte : démarrée après le premier affichage (le SDK Firebase
+  // est chargé à la demande, il ne retarde pas la carte).
+  useEffect(() => {
+    const t = setTimeout(() => useAccount.getState().init(), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   const select = useCallback((p: ParcelleProperties) => {
     setParcelle(p);
@@ -145,6 +154,7 @@ export function App() {
           </>
         )}
       </aside>
+      <AuthModal />
     </div>
   );
 }

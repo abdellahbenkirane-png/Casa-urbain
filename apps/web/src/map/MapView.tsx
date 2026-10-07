@@ -4,6 +4,7 @@ import parcellesRaw from "../../../../data/ainchock/parcelles.geojson?raw";
 import { fetchZonage } from "./aucService";
 import { SearchBar } from "./SearchBar";
 import { Legend } from "./Legend";
+import { AccountButton } from "../cloud/AccountButton";
 import { AUTRE_COLOR, FAMILLE_COLORS as ZONE_COLORS } from "../zoning/zones";
 import { prixTerrainOf, surfaceParDefaut } from "../simulator/zoneProfiles";
 
@@ -1016,6 +1017,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           </span>
         </div>
         <SearchBar getMap={() => mapRef.current} />
+        <AccountButton />
       </div>
 
       <div className="layers" ref={menuRef}>

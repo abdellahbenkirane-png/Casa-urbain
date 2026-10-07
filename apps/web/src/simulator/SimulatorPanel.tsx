@@ -14,6 +14,8 @@ import { CostBreakdown, Metrics, Sensitivity, Verdict } from "./Results";
 import { exportScenarioPdf, exportScenarioXlsx } from "./exports";
 import { validate } from "./zoneValidation";
 import type { ParcelleProperties } from "../map/MapView";
+import { useAccount, useAuthModal } from "../cloud/account";
+import { cloudEnabled } from "../cloud/firebase";
 
 export function SimulatorPanel({
   parcelle,
@@ -53,9 +55,13 @@ export function SimulatorPanel({
     };
   }, [exportOpen]);
 
+  // Connexion / déconnexion : les scénarios viennent d'un autre endroit
+  // (compte ou appareil) → on recharge.
+  const uid = useAccount((s) => s.user?.uid ?? null);
+  const showLogin = useAuthModal((s) => s.show);
   useEffect(() => {
     loadForParcelle(parcelle.id);
-  }, [parcelle.id, loadForParcelle]);
+  }, [parcelle.id, loadForParcelle, uid]);
 
   useEffect(() => {
     const active = scenarios.find((s) => s.id === activeId);
@@ -183,6 +189,16 @@ export function SimulatorPanel({
           <SimulatorForm input={draft} onChange={onChange} />
         </details>
       </div>
+
+      {cloudEnabled && !uid && (
+        <p className="save-hint">
+          Vos scénarios sont gardés sur cet appareil.{" "}
+          <button className="link-btn" onClick={showLogin}>
+            Connectez-vous
+          </button>{" "}
+          pour les retrouver sur tous vos appareils.
+        </p>
+      )}
 
       <p className="disclaimer">
         Estimation indicative basée sur des prix moyens de marché. Ne remplace pas une étude

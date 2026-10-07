@@ -26,6 +26,9 @@ export default defineConfig({
         // Stratégie : cache les tuiles et les assets statiques agressivement ;
         // le zonage AUC en stale-while-revalidate.
         navigateFallback: "/index.html",
+        // Firebase (~900 kB) n'est chargé que si l'utilisateur se connecte :
+        // on ne le pré-télécharge pas pour tout le monde.
+        globIgnores: ["**/firebase-*.js"],
         // Nouvelle version active immédiatement (sans attendre la fermeture
         // de tous les onglets) et purge des anciens précaches.
         skipWaiting: true,
@@ -77,6 +80,7 @@ export default defineConfig({
             if (id.includes("zustand") || id.includes("idb-keyval")) return "state";
             if (id.includes("zod")) return "zod";
             if (id.includes("exceljs")) return "exceljs";
+            if (id.includes("firebase") || id.includes("@firebase")) return "firebase";
           }
         },
       },
