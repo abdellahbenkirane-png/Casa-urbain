@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard, ZoneBadge } from "./zoning/ZoneCard";
 
@@ -42,6 +42,23 @@ export function App() {
   const cycleSheet = () =>
     setSheet((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"));
 
+  // Glisser vers le haut / le bas sur la poignée ou l'en-tête (mobile).
+  const swipeStart = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    swipeStart.current = e.touches[0]?.clientY ?? null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    const end = e.changedTouches[0]?.clientY;
+    if (start == null || end == null || Math.abs(end - start) < 40) return;
+    const order: Sheet[] = ["peek", "half", "full"];
+    setSheet((s) => {
+      const i = order.indexOf(s) + (end < start ? 1 : -1);
+      return order[Math.max(0, Math.min(order.length - 1, i))]!;
+    });
+  };
+
   return (
     <div className="layout">
       <main className="map-container">
@@ -52,6 +69,8 @@ export function App() {
         <button
           className="sheet-handle"
           onClick={cycleSheet}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
           aria-label={sheet === "full" ? "Réduire le panneau" : "Agrandir le panneau"}
         >
           <span />
@@ -61,6 +80,9 @@ export function App() {
           <Welcome />
         ) : (
           <>
+            {/* En-tête + onglets collés ensemble en haut du panneau : un seul bloc
+                sticky, quelle que soit la hauteur du titre. */}
+            <div className="panel-top" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <header className="parcel-header">
               <div className="parcel-header-main">
                 <ZoneBadge code={parcelle.zone} />
@@ -104,6 +126,7 @@ export function App() {
               <button role="tab" aria-selected={tab === "reglement"} className={tab === "reglement" ? "on" : ""} onClick={() => setTab("reglement")}>
                 Règles de la zone
               </button>
+            </div>
             </div>
 
             <div className="panel-body">

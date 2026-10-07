@@ -521,10 +521,13 @@ h1, h2, h3, h4, p { margin: 0; }
 /* =========================================================
    Panel — parcelle
    ========================================================= */
-.parcel-header {
+.panel-top {
   position: sticky;
   top: 0;
   z-index: 3;
+  background: var(--surface);
+}
+.parcel-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -550,9 +553,6 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 
 .tabs-bar {
-  position: sticky;
-  top: 74px;
-  z-index: 3;
   display: flex;
   gap: 4px;
   padding: 0 20px;
@@ -945,8 +945,17 @@ input[type="number"] { -moz-appearance: textfield; }
   .welcome h2 { font-size: 18px; }
   .welcome-lead { font-size: 14px; }
 
-  .parcel-header { top: 22px; padding: 4px 16px 10px; }
-  .tabs-bar { top: 82px; padding: 0 16px; }
+  .panel-top { top: 22px; }
+  .parcel-header { padding: 4px 16px 10px; }
+  .tabs-bar { padding: 0 16px; }
+  /* Titre sur 2 lignes max, sous-titre sur 1 ligne : en-tête compact. */
+  .parcel-header h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; }
+  .parcel-header p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .parcel-header-main { min-width: 0; flex: 1; }
+  .parcel-header-main > div { min-width: 0; }
+  /* iOS zoome la page au focus d'un champ < 16 px : on reste à 16 px sur mobile. */
+  input, select, textarea, .num-input input, .row-table input, .scenario-name { font-size: 16px !important; }
+  .panel { overflow-x: hidden; touch-action: pan-y; }
   .panel-body { padding: 14px 16px 0; }
   .action-bar { margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
   .toast { left: 16px; right: 16px; }
@@ -1029,7 +1038,10 @@ input[type="number"] { -moz-appearance: textfield; }
   font-size: 13px;
 }
 .pill-btn:hover { background: var(--surface-2); }
+/* Après .pill-btn / .icon-btn : sinon leur display l'emporte sur desktop. */
+.pill-btn.mobile-only, .icon-btn.mobile-only { display: none; }
 @media (max-width: 768px) {
+  .pill-btn.mobile-only { display: inline-flex; }
   .mobile-only { display: inline-flex; }
   .icon-btn.mobile-only { display: grid; }
 }
