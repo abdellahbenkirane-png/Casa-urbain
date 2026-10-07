@@ -1,4 +1,4 @@
-import { familleOf, getZone, type Zone } from "../zoning/zones";
+import { baseZoneCode, familleOf, getZone, type Zone } from "../zoning/zones";
 
 /**
  * Valeurs par défaut d'un scénario selon la zone sélectionnée.
@@ -87,7 +87,8 @@ const ETAGES_ZONE: Record<string, number> = {
 export function etagesOf(code: string, zone: Zone | undefined = getZone(code)): number {
   const p = zone?.parametres;
   if (p?.nombreEtagesMax != null && p.nombreEtagesMax > 0) return p.nombreEtagesMax;
-  if (ETAGES_ZONE[code] != null) return ETAGES_ZONE[code]!;
+  const base = baseZoneCode(code) ?? code; // sous-secteur « E3s » → « E3 »
+  if (ETAGES_ZONE[base] != null) return ETAGES_ZONE[base]!;
   const h = p?.hauteurMaxM ?? hauteurDepuisCode(code);
   if (h != null) return etagesPourHauteur(h);
   return ETAGES_FAMILLE[familleOf(code)] ?? 4;
@@ -148,7 +149,7 @@ export function programmeDefaut(code: string, surfaceTerrain: number): Programme
   const r = Math.round;
 
   if (prog === "villa") {
-    const emprise = code === "D1" ? 0.5 : 0.4;
+    const emprise = baseZoneCode(code) === "D1" ? 0.5 : 0.4;
     const plancher = surfaceTerrain * emprise * niveaux;
     return {
       etages,

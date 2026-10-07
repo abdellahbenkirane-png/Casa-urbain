@@ -1329,3 +1329,38 @@ input[type="number"] { -moz-appearance: textfield; }
   .layers > .map-btn, .measure-btn { width: 42px; height: 42px; }
   .measure-btn { top: 118px; }
 }
+
+.search-empty {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* Contraste AA (≥ 4,5:1) pour les petits textes gris */
+:root { --muted: #67665f; }
+@media (prefers-color-scheme: dark) { :root { --muted: #8f8d85; } }
+
+/* Tablette : boutons de carte en icônes seules, la recherche respire */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .topbar { right: 64px; }
+  .layers > .map-btn, .measure-btn { width: 40px; padding: 0; justify-content: center; }
+  .layers > .map-btn span, .measure-btn span { display: none; }
+  .measure-btn { top: 58px; }
+  .measure-btn.is-active { width: auto; padding: 0 12px; }
+  .measure-btn.is-active span { display: inline; }
+  .zoom-hint, .map-status, .draw-panel { top: 108px; }
+}
+
+/* Mobile : la légende disparaît quand le panneau couvre la carte */
+@media (max-width: 768px) {
+  .layout:has(.panel.sheet-half) .legend,
+  .layout:has(.panel.sheet-full) .legend { display: none; }
+}

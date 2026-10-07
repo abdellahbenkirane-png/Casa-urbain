@@ -313,7 +313,8 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
     map.on("load", async () => {
       // Sur mobile, l'attribution reste repliée derrière le bouton ⓘ
       // (MapLibre la déplie au chargement, ce qui masque la légende).
-      if (window.innerWidth <= 768) {
+      // Idem quand la carte est étroite (tablette) : sinon elle couvre la légende.
+      if (window.innerWidth <= 768 || (containerRef.current?.clientWidth ?? 0) < 900) {
         containerRef.current
           ?.querySelector(".maplibregl-ctrl-attrib")
           ?.classList.remove("maplibregl-compact-show");
@@ -457,11 +458,19 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
+        // Halo blanc + trait encre : la zone ouverte se distingue des contours
+        // blancs de toutes les autres zones.
+        map.addLayer({
+          id: "selection-halo",
+          type: "line",
+          source: "selection",
+          paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 },
+        });
         map.addLayer({
           id: "selection-line",
           type: "line",
           source: "selection",
-          paint: { "line-color": "#ffffff", "line-width": 3 },
+          paint: { "line-color": "#121211", "line-width": 3 },
         });
 
         // 4. Outil de mesure — polygone en cours de dessin (fill + line + points)
@@ -731,13 +740,15 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
             },
           ],
         });
-        setDrawArea(geodesicArea(drawPoints));
       } else {
         fillSrc.setData({ type: "FeatureCollection", features: [] });
-        setDrawArea(null);
       }
     };
-    if (map.isStyleLoaded()) apply();
+    // L'aire ne dépend pas de la carte : calculée directement.
+    setDrawArea(drawPoints.length >= 3 ? geodesicArea(drawPoints) : null);
+    // Pas isStyleLoaded() : il reste false tant que des tuiles ou le zonage
+    // chargent, et « load » ne se déclenche qu'une fois → rien n'était dessiné.
+    if (map.getSource("draw-points")) apply();
     else map.once("load", apply);
   }, [drawPoints, drawFinalized]);
 
@@ -1071,6 +1082,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           setMenuOpen(false);
         }}
         aria-pressed={drawMode}
+        aria-label={drawMode ? "Annuler la mesure" : "Dessiner un terrain"}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden>
           <path d="M3 21 21 3" />

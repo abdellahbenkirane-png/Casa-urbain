@@ -29,7 +29,20 @@ export interface Zone {
 
 const ZONES = (zonesData as { zones: Record<string, Zone> }).zones;
 
-export const getZone = (code: string): Zone | undefined => ZONES[code];
+/**
+ * Code de zone documenté le plus proche : le code exact, sinon la zone mère
+ * d'un sous-secteur AUC (« C4s » → « C4 », « B4a » → « B4 »).
+ */
+export function baseZoneCode(code: string): string | undefined {
+  if (ZONES[code]) return code;
+  const m = /^([A-Z]+\d+)/.exec(code.trim());
+  return m && ZONES[m[1]!] ? m[1] : undefined;
+}
+
+export const getZone = (code: string): Zone | undefined => {
+  const base = baseZoneCode(code);
+  return base ? ZONES[base] : undefined;
+};
 export const allZones = (): Zone[] => Object.values(ZONES);
 
 /**

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getZone, familleOf, AUTRE_COLOR, AUTRE_LABEL, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
+import { getZone, baseZoneCode, familleOf, AUTRE_COLOR, AUTRE_LABEL, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
 import { FicheModal } from "./FicheModal";
 import type { ParcelleProperties } from "../map/MapView";
 
@@ -78,12 +78,19 @@ export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
 
   const rows = zoneRules(parcelle.zone);
   const p = zone.parametres;
+  const base = baseZoneCode(parcelle.zone);
 
   return (
     <>
       <section className="card">
         <h3 className="card-title">{capitalize(zone.nom.replace(/^[^—]+—\s*/, ""))}</h3>
         <p className="card-text">{zone.description}</p>
+        {base && base !== parcelle.zone && (
+          <div className="notice info">
+            Sous-secteur <strong>{parcelle.zone}</strong> : règles de la zone <strong>{base}</strong>{" "}
+            affichées. Des dispositions particulières au sous-secteur peuvent s'appliquer.
+          </div>
+        )}
         {rows.length > 0 && (
           <dl className="rule-grid">
             {rows.map((r) => (

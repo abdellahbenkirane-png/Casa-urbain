@@ -29,6 +29,8 @@ export function SearchBar({ getMap }: Props) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  // Vrai après une réponse de Nominatim pour le texte courant (message « aucun résultat »).
+  const [searched, setSearched] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   // Le libellé écrit dans le champ après une sélection ne doit pas relancer
   // une recherche (sinon la liste se rouvre par-dessus la carte).
@@ -37,7 +39,10 @@ export function SearchBar({ getMap }: Props) {
   // Ferme le dropdown si on clique en dehors
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapperRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setSearched(false);
+      }
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -49,6 +54,7 @@ export function SearchBar({ getMap }: Props) {
       skipSearchRef.current = false;
       return;
     }
+    setSearched(false);
     if (q.trim().length < 3) {
       setResults([]);
       return;
@@ -72,6 +78,7 @@ export function SearchBar({ getMap }: Props) {
         if (!res.ok) throw new Error(String(res.status));
         const data = (await res.json()) as NominatimResult[];
         setResults(data);
+        setSearched(true);
         setOpen(data.length > 0);
         setActiveIdx(-1);
       } catch (e) {
@@ -101,9 +108,11 @@ export function SearchBar({ getMap }: Props) {
     setQ(r.display_name.split(",")[0] ?? r.display_name);
     setOpen(false);
     setResults([]);
+    setSearched(false);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") setSearched(false);
     if (!open || results.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -118,6 +127,7 @@ export function SearchBar({ getMap }: Props) {
       if (r) select(r);
     } else if (e.key === "Escape") {
       setOpen(false);
+      setSearched(false);
     }
   };
 
@@ -145,6 +155,7 @@ export function SearchBar({ getMap }: Props) {
               setQ("");
               setResults([]);
               setOpen(false);
+              setSearched(false);
             }}
             aria-label="Effacer"
           >
@@ -153,6 +164,11 @@ export function SearchBar({ getMap }: Props) {
         )}
         {loading && <span className="spinner" aria-label="Recherche…" />}
       </div>
+      {searched && !loading && results.length === 0 && q.trim().length >= 3 && (
+        <div className="search-empty" role="status">
+          Aucun résultat à Casablanca pour « {q.trim()} ». Essayez un nom de rue ou de quartier.
+        </div>
+      )}
       {open && results.length > 0 && (
         <ul className="search-results">
           {results.map((r, i) => (

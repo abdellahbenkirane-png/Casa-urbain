@@ -11,11 +11,13 @@ export const NumInput = ({
   onChange,
   step = 1,
   suffix,
+  ariaLabel,
 }: {
   value: number;
   onChange: (v: number) => void;
   step?: number;
   suffix?: string;
+  ariaLabel?: string;
 }) => {
   // Texte local : on peut vider le champ pour retaper une valeur sans qu'un
   // « 0 » réapparaisse aussitôt. Le modèle reçoit 0 tant que c'est vide.
@@ -29,6 +31,7 @@ export const NumInput = ({
       <input
         type="number"
         inputMode="decimal"
+        aria-label={ariaLabel}
         step={step}
         value={text}
         onChange={(e) => {
@@ -117,6 +120,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 <td>
                   <input
                     type="text"
+                    aria-label={`Libellé de la vente ${i + 1}`}
                     value={v.libelle}
                     onChange={(e) => {
                       const next = [...input.ventes];
@@ -127,6 +131,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 </td>
                 <td>
                   <NumInput
+                    ariaLabel={`Prix TTC au m², ${v.libelle}`}
                     value={v.prixTtcDhParM2}
                     step={500}
                     onChange={(val) => {
@@ -138,6 +143,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 </td>
                 <td>
                   <NumInput
+                    ariaLabel={`Surface vendable, ${v.libelle}`}
                     value={v.superficieVendable}
                     onChange={(val) => {
                       const next = [...input.ventes];
@@ -194,6 +200,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 <td>
                   <input
                     type="text"
+                    aria-label={`Libellé du poste ${i + 1}`}
                     value={c.libelle}
                     onChange={(e) => {
                       const next = [...input.constructions];
@@ -204,6 +211,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 </td>
                 <td>
                   <NumInput
+                    ariaLabel={`Prix HT au m², ${c.libelle}`}
                     value={c.prixHtDhParM2}
                     step={100}
                     onChange={(val) => {
@@ -215,6 +223,7 @@ export function SimulatorForm({ input, onChange }: Props) {
                 </td>
                 <td>
                   <NumInput
+                    ariaLabel={`Surface construite, ${c.libelle}`}
                     value={c.superficieConstruite}
                     onChange={(val) => {
                       const next = [...input.constructions];
