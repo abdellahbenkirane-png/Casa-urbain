@@ -35,7 +35,11 @@ let cloudPromise: Promise<Cloud> | null = null;
 export function getCloud(): Promise<Cloud> {
   if (!cloudEnabled) return Promise.reject(new Error("Comptes non configurés"));
   cloudPromise ??= (async () => {
-    const [{ initializeApp }, { getAuth }, { initializeFirestore, persistentLocalCache }] =
+    const [
+      { initializeApp },
+      { getAuth },
+      { initializeFirestore, persistentLocalCache, persistentMultipleTabManager },
+    ] =
       await Promise.all([
         import("firebase/app"),
         import("firebase/auth"),
@@ -44,8 +48,14 @@ export function getCloud(): Promise<Cloud> {
     const app = initializeApp(config);
     const auth = getAuth(app);
     auth.languageCode = "fr";
-    // Cache local : les scénarios restent consultables hors connexion.
-    const db = initializeFirestore(app, { localCache: persistentLocalCache() });
+    // Cache local : les scénarios restent consultables hors connexion. Mode
+    // multi-onglets : le site peut être ouvert dans plusieurs onglets à la fois.
+    const db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      // Champs facultatifs absents (ex. façade inconnue d'une zone AUC) :
+      // Firestore refuse `undefined` par défaut et l'enregistrement échouait.
+      ignoreUndefinedProperties: true,
+    });
     return { app, auth, db };
   })();
   return cloudPromise;

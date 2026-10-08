@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { SimulationInput } from "@casa/core";
 import { NumInput } from "./SimulatorForm";
 import { resumeProgramme } from "./zoneProfiles";
@@ -25,24 +26,56 @@ export function KeyInputs({
 }) {
   const t = input.terrain;
 
+  // Les surfaces vendables / construites suivent la surface du terrain et le
+  // nombre d'étages. On les recalcule depuis une référence (surfaces « par m²
+  // de terrain » et « par étage ») mémorisée tant que la valeur est > 0 : vider
+  // le champ pour le retaper passe par 0, et un simple rapport nouveau/ancien
+  // aurait alors effacé définitivement toutes les surfaces.
+  const perM2 = useRef<{ ventes: number[]; constructions: number[] } | null>(null);
+  const perEtage = useRef<{ ventes: number[]; constructions: number[] } | null>(null);
+  if (t.surface > 0) {
+    perM2.current = {
+      ventes: input.ventes.map((v) => v.superficieVendable / t.surface),
+      constructions: input.constructions.map((c) => c.superficieConstruite / t.surface),
+    };
+  }
+  if (t.nombreEtages > 0) {
+    perEtage.current = {
+      ventes: input.ventes.map((v) => v.superficieVendable / t.nombreEtages),
+      constructions: input.constructions.map((c) => c.superficieConstruite / t.nombreEtages),
+    };
+  }
+
   const setSurface = (surface: number) => {
-    const f = t.surface > 0 ? surface / t.surface : 1;
+    const ref = perM2.current;
+    // 0 = champ vidé en cours de saisie : on garde les surfaces telles quelles.
+    if (surface <= 0 || !ref) {
+      onChange({ ...input, terrain: { ...t, surface } });
+      return;
+    }
     onChange({
       ...input,
       terrain: { ...t, surface },
-      ventes: input.ventes.map((v) => ({ ...v, superficieVendable: Math.round(v.superficieVendable * f) })),
-      constructions: input.constructions.map((c) => ({ ...c, superficieConstruite: Math.round(c.superficieConstruite * f) })),
+      ventes: input.ventes.map((v, i) => ({ ...v, superficieVendable: Math.round((ref.ventes[i] ?? 0) * surface) })),
+      constructions: input.constructions.map((c, i) => ({ ...c, superficieConstruite: Math.round((ref.constructions[i] ?? 0) * surface) })),
     });
   };
 
   const setEtages = (nombreEtages: number) => {
-    const f = t.nombreEtages > 0 ? nombreEtages / t.nombreEtages : 1;
-    const scale = (libelle: string, v: number) => (GROUND_LEVEL.test(libelle) ? v : Math.round(v * f));
+    const ref = perEtage.current;
+    if (!ref) {
+      onChange({ ...input, terrain: { ...t, nombreEtages } });
+      return;
+    }
+    // R+0 est une valeur valable : les surfaces d'étage passent à 0, mais la
+    // référence par étage est conservée pour pouvoir remonter ensuite.
+    const scale = (libelle: string, current: number, perFloor: number | undefined) =>
+      GROUND_LEVEL.test(libelle) ? current : Math.round((perFloor ?? 0) * nombreEtages);
     onChange({
       ...input,
       terrain: { ...t, nombreEtages },
-      ventes: input.ventes.map((v) => ({ ...v, superficieVendable: scale(v.libelle, v.superficieVendable) })),
-      constructions: input.constructions.map((c) => ({ ...c, superficieConstruite: scale(c.libelle, c.superficieConstruite) })),
+      ventes: input.ventes.map((v, i) => ({ ...v, superficieVendable: scale(v.libelle, v.superficieVendable, ref.ventes[i]) })),
+      constructions: input.constructions.map((c, i) => ({ ...c, superficieConstruite: scale(c.libelle, c.superficieConstruite, ref.constructions[i]) })),
     });
   };
 

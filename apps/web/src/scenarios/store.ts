@@ -76,12 +76,18 @@ interface SimState {
   reset: () => void;
 }
 
+let loadTicket = 0;
+
 export const useScenarioStore = create<SimState>((set, get) => ({
   parcelleId: null,
   scenarios: [],
   activeId: null,
 
   async loadForParcelle(parcelleId) {
+    // La parcelle courante change tout de suite : un enregistrement fait pendant
+    // le chargement est rattaché à la bonne parcelle.
+    const ticket = ++loadTicket;
+    if (get().parcelleId !== parcelleId) set({ parcelleId, scenarios: [], activeId: null });
     let scenarios: StoredScenario[] = [];
     try {
       scenarios = await listScenariosForParcelle(parcelleId);
@@ -89,6 +95,8 @@ export const useScenarioStore = create<SimState>((set, get) => ({
       // Compte injoignable (hors ligne, règles…) : on n'empêche pas de simuler.
       console.warn("[scenarios] chargement impossible", e);
     }
+    // Réponse arrivée après un changement de parcelle (ou de compte) : ignorée.
+    if (ticket !== loadTicket) return;
     set({
       parcelleId,
       scenarios,

@@ -20,14 +20,27 @@ export async function cloudList(uid: string, parcelleId: string): Promise<Stored
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/**
+ * Firestore applique l'écriture tout de suite dans son cache local, mais la
+ * promesse n'aboutit qu'après confirmation du serveur — jamais hors ligne.
+ * Au-delà de quelques secondes, on considère l'écriture acquise : elle sera
+ * synchronisée au retour du réseau. Une vraie erreur (droits…) reste remontée.
+ */
+const PENDING_SYNC_MS = 4000;
+const settleOrPending = (p: Promise<void>) =>
+  Promise.race([p, new Promise<void>((resolve) => setTimeout(resolve, PENDING_SYNC_MS))]);
+
+/** Copie sans les champs `undefined` (refusés par Firestore). */
+const clean = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
 export async function cloudSave(uid: string, s: StoredScenario): Promise<void> {
   const { doc, setDoc } = await import("firebase/firestore");
-  await setDoc(doc(await col(uid), s.id), s);
+  await settleOrPending(setDoc(doc(await col(uid), s.id), clean(s)));
 }
 
 export async function cloudDelete(uid: string, id: string): Promise<void> {
   const { doc, deleteDoc } = await import("firebase/firestore");
-  await deleteDoc(doc(await col(uid), id));
+  await settleOrPending(deleteDoc(doc(await col(uid), id)));
 }
 
 /** Copie des scénarios dans le compte en une seule écriture groupée. */
@@ -38,7 +51,7 @@ export async function cloudImport(uid: string, items: StoredScenario[]): Promise
   // Firestore limite un lot à 500 écritures.
   for (let i = 0; i < items.length; i += 450) {
     const batch = writeBatch(db);
-    for (const s of items.slice(i, i + 450)) batch.set(doc(c, s.id), s);
+    for (const s of items.slice(i, i + 450)) batch.set(doc(c, s.id), clean(s));
     await batch.commit();
   }
 }

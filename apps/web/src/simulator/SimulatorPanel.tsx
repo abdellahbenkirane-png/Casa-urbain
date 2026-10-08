@@ -61,14 +61,25 @@ export function SimulatorPanel({
     loadForParcelle(parcelle.id);
   }, [parcelle.id, loadForParcelle, uid]);
 
+  // Le brouillon suit le scénario actif. Sans scénario actif, on part du
+  // programme par défaut de la zone — sans écraser ce que l'utilisateur a déjà
+  // commencé à saisir (la liste des scénarios du compte peut arriver après).
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const shownId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const active = scenarios.find((s) => s.id === activeId);
     if (active) {
-      setDraft(active.input);
-      setDirty(false);
-    } else {
+      if (shownId.current !== active.id) {
+        setDraft(active.input);
+        setDirty(false);
+      }
+      shownId.current = active.id;
+    } else if (shownId.current !== null || !dirtyRef.current) {
+      // Premier affichage, ou scénario actif supprimé : programme par défaut.
       setDraft(buildInitialScenario(parcelle));
       setDirty(true);
+      shownId.current = null;
     }
   }, [activeId, scenarios, parcelle]);
 
