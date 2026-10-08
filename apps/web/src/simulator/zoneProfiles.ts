@@ -132,10 +132,13 @@ export interface ProgrammeDefaut {
 /**
  * Programme type pour une surface de terrain donnée.
  *
- * Surface plancher :
- *  - COS du PAU (par niveau) × niveaux quand il est fixé ;
- *  - sinon emprise type × niveaux (collectif 70 %, villa 40 % — 50 % en
- *    bande (D1) —, tertiaire 50 %).
+ * Surface plancher = emprise au sol × niveaux, plafonnée par le COS :
+ *  - emprise : celle du règlement (CUS des fiches AUC) quand elle est fixée,
+ *    sinon une emprise type (collectif 70 %, villa 40 % — 50 % en bande
+ *    (D1) —, tertiaire 50 %) ;
+ *  - COS : surface de plancher totale / surface du terrain. Le référentiel
+ *    historique (pau-zones.json) le stocke dans `cos` : même sens, c'est un
+ *    plafond global et non un coefficient par niveau.
  * Surface vendable ≈ 85 % de la surface plancher (parties communes déduites),
  * 100 % pour une villa.
  */
@@ -145,12 +148,15 @@ export function programmeDefaut(code: string, surfaceTerrain: number, arr?: stri
   const niveaux = etages + 1;
   const prog = programmeOf(code, arr);
   const m = marcheOf(code, arr);
-  const cos = zone?.parametres.cos ?? null;
+  const p = zone?.parametres;
+  const cos = p?.cosGlobal ?? p?.cos ?? null;
+  // Plafond de plancher total fixé par le COS (aucun s'il n'est pas fixé).
+  const plafond = cos != null ? surfaceTerrain * cos : Infinity;
   const r = Math.round;
 
   if (prog === "villa") {
-    const emprise = baseZoneCode(code, arr) === "D1" ? 0.5 : 0.4;
-    const plancher = surfaceTerrain * emprise * niveaux;
+    const emprise = p?.cus ?? (baseZoneCode(code, arr) === "D1" ? 0.5 : 0.4);
+    const plancher = Math.min(surfaceTerrain * emprise * niveaux, plafond);
     return {
       etages,
       ventes: [{ libelle: "Villa", prixTtcDhParM2: m.vente, superficieVendable: r(plancher) }],
@@ -159,10 +165,8 @@ export function programmeDefaut(code: string, surfaceTerrain: number, arr?: stri
     };
   }
 
-  const emprise = prog === "tertiaire" ? 0.5 : 0.7;
-  // COS de la parcelle (fiches AUC) : plafond de la surface de plancher totale.
-  const plafond = zone?.parametres.cosGlobal != null ? surfaceTerrain * zone.parametres.cosGlobal : Infinity;
-  const plancher = Math.min(surfaceTerrain * (cos ?? emprise) * niveaux, plafond);
+  const emprise = p?.cus ?? (prog === "tertiaire" ? 0.5 : 0.7);
+  const plancher = Math.min(surfaceTerrain * emprise * niveaux, plafond);
   const vendable = plancher * 0.85;
   const commerce = commerceAutorise(zone);
   // Commerce : RDC uniquement, au plus 30 % du vendable et l'emprise au sol.
