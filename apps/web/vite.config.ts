@@ -1,10 +1,46 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import type { Plugin } from "vite";
+
+/**
+ * En dev, /api/auc n'existe pas (c'est une fonction serverless Vercel) : sans
+ * ce relais le zonage AUC ne s'affiche pas en local. On réutilise le même
+ * handler (api/auc.js) via un petit adaptateur req/res façon Vercel.
+ */
+function aucDevProxy(): Plugin {
+  return {
+    name: "auc-dev-proxy",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/api/auc", async (req, res) => {
+        const { default: handler } = await import("./api/auc.js");
+        const url = new URL(req.url ?? "", "http://localhost");
+        const query: Record<string, string> = Object.fromEntries(url.searchParams);
+        const vres = {
+          setHeader: (k: string, v: string) => res.setHeader(k, v),
+          status(code: number) {
+            res.statusCode = code;
+            return vres;
+          },
+          send(body: string) {
+            res.end(body);
+          },
+          json(obj: unknown) {
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify(obj));
+          },
+        };
+        await handler({ query }, vres);
+      });
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     react(),
+    aucDevProxy(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
