@@ -1,20 +1,22 @@
-import { baseZoneCode, familleOf, getZone, type Zone } from "../zoning/zones";
+import prixData from "../../../../data/marche/prix-arrondissements.json";
+import { arrKey, baseZoneCode, familleOf, getZone, type Zone } from "../zoning/zones";
 
 /**
  * Valeurs par défaut d'un scénario selon la zone sélectionnée.
  *
- * Deux sources :
- *  - le règlement (pau-zones.json) : étages max, COS, surface minimale,
- *    usages autorisés / interdits, mixité sociale → données factuelles ;
- *  - le tableau MARCHE ci-dessous : prix de terrain, de vente et coûts de
- *    construction par famille → ESTIMATIONS à remplacer par des références
- *    marché réelles. C'est le seul endroit à modifier pour recaler les prix.
+ * Sources :
+ *  - le règlement de l'arrondissement (fiches AUC) : étages max, COS, emprise,
+ *    surface minimale, usages autorisés / interdits → données factuelles ;
+ *  - le prix moyen des appartements de l'arrondissement (portails 2026,
+ *    data/marche/prix-arrondissements.json) → niveau de prix ;
+ *  - des hypothèses explicites ci-dessous : écarts de prix entre familles de
+ *    zone, charge foncière, coûts de construction selon le standing.
  */
 
 export type Programme = "collectif" | "villa" | "tertiaire";
 
 interface Marche {
-  /** Prix d'achat du terrain, DH/m² */
+  /** Prix d'achat du terrain, DH/m² de terrain */
   terrain: number;
   /** Prix de vente du produit principal (appartement, villa, bureau), DH TTC/m² */
   vente: number;
@@ -22,31 +24,76 @@ interface Marche {
   commerce: number;
 }
 
-// ⚠️ Estimations indicatives, non issues d'une étude de marché.
-const MARCHE: Record<string, Marche> = {
-  A: { terrain: 23000, vente: 22000, commerce: 32000 },
-  B: { terrain: 18000, vente: 20000, commerce: 30000 },
-  C: { terrain: 16000, vente: 18000, commerce: 26000 },
-  D: { terrain: 10000, vente: 28000, commerce: 0 },
-  E: { terrain: 12000, vente: 14000, commerce: 20000 },
-  I: { terrain: 8000, vente: 16000, commerce: 22000 },
-  PB: { terrain: 14000, vente: 18000, commerce: 26000 },
-  PU: { terrain: 17000, vente: 20000, commerce: 30000 },
-  S: { terrain: 10000, vente: 12000, commerce: 18000 },
-  ZR: { terrain: 11000, vente: 14000, commerce: 20000 },
-};
-const MARCHE_AUTRE: Marche = { terrain: 15000, vente: 18000, commerce: 26000 };
+/**
+ * Prix de vente moyen d'un appartement par arrondissement (portails
+ * immobiliers 2026, cf. data/marche/prix-arrondissements.json). Moyenne de la
+ * ville quand l'arrondissement n'est pas connu.
+ */
+const PRIX_VILLE = 13000;
+const PRIX_APPARTEMENT: Record<string, number> = Object.fromEntries(
+  Object.entries((prixData as { prix: Record<string, { appartement: number }> }).prix).map(([nom, p]) => [
+    arrKey(nom)!,
+    p.appartement,
+  ]),
+);
 
-// Coûts de construction HT (DH/m²) — mêmes ordres de grandeur que le pro forma source.
+/** Prix moyen d'un appartement dans l'arrondissement (DH/m²), s'il est connu. */
+export const prixAppartementOf = (arr?: string): number | undefined => {
+  const k = arrKey(arr);
+  return k ? PRIX_APPARTEMENT[k] : undefined;
+};
+const prixLocal = (arr?: string) => prixAppartementOf(arr) ?? PRIX_VILLE;
+
+// ⚠️ Hypothèses : prix du produit par famille de zone, relatif au prix moyen
+// d'un appartement de l'arrondissement (A : tours et adresses prisées ;
+// D : villa, terrain compris ; I : bureaux ; E, S : tissu existant).
+const COEF_VENTE: Record<string, number> = {
+  A: 1.1, B: 1, C: 1, D: 1.4, E: 0.9, I: 0.8, PB: 1, PU: 1, S: 0.85, ZR: 0.9,
+};
+const COEF_COMMERCE = 1.5;
+
+/**
+ * Charge foncière usuelle : part du chiffre d'affaires que représente le
+ * terrain. Le marché valorise un terrain selon ce qu'on peut y construire :
+ * le prix indicatif est donc déduit du programme autorisé, pas d'un barème au
+ * m² de terrain (aucune source publique fiable par quartier).
+ */
+const CHARGE_FONCIERE: Record<Programme, number> = { collectif: 0.22, villa: 0.4, tertiaire: 0.2 };
+
+// Coûts de construction HT (DH/m²) pour un standing moyen-haut (Maârif) ;
+// ajustés au standing de l'arrondissement (de -25 % à +10 %).
 const COUT = {
   sousSolRdc: 1700,
   etages: 3800,
   villa: 4500,
   tertiaire: 4000,
 };
+const PRIX_STANDING_REF = 16000;
+const coefStanding = (arr?: string) =>
+  Math.min(1.1, Math.max(0.75, 0.6 + (0.4 * prixLocal(arr)) / PRIX_STANDING_REF));
 
-export const marcheOf = (code: string, arr?: string): Marche => MARCHE[familleOf(code, arr)] ?? MARCHE_AUTRE;
-export const prixTerrainOf = (code: string, arr?: string): number => marcheOf(code, arr).terrain;
+const arrondi = (v: number) => Math.round(v / 100) * 100;
+
+function prixVente(code: string, arr?: string) {
+  const prix = prixLocal(arr);
+  return {
+    vente: arrondi(prix * (COEF_VENTE[familleOf(code, arr)] ?? 1)),
+    commerce: arrondi(prix * COEF_COMMERCE),
+  };
+}
+
+/** Terrain indicatif (DH/m² de terrain) : charge foncière du programme autorisé. */
+export function prixTerrainOf(code: string, arr?: string): number {
+  const surface = 1000;
+  const prog = programmeDefaut(code, surface, arr);
+  const ca = prog.ventes.reduce((s, v) => s + v.prixTtcDhParM2 * v.superficieVendable, 0);
+  return Math.max(500, arrondi((CHARGE_FONCIERE[programmeOf(code, arr)] * ca) / surface));
+}
+
+export const marcheOf = (code: string, arr?: string): Marche => ({
+  ...prixVente(code, arr),
+  terrain: prixTerrainOf(code, arr),
+});
 
 /** Programme type selon les usages autorisés par le règlement. */
 export function programmeOf(code: string, arr?: string): Programme {
@@ -147,7 +194,8 @@ export function programmeDefaut(code: string, surfaceTerrain: number, arr?: stri
   const etages = etagesOf(code, zone, arr);
   const niveaux = etages + 1;
   const prog = programmeOf(code, arr);
-  const m = marcheOf(code, arr);
+  const m = prixVente(code, arr);
+  const standing = coefStanding(arr);
   const p = zone?.parametres;
   const cos = p?.cosGlobal ?? p?.cos ?? null;
   // Plafond de plancher total fixé par le COS (aucun s'il n'est pas fixé).
@@ -160,7 +208,7 @@ export function programmeDefaut(code: string, surfaceTerrain: number, arr?: stri
     return {
       etages,
       ventes: [{ libelle: "Villa", prixTtcDhParM2: m.vente, superficieVendable: r(plancher) }],
-      constructions: [{ libelle: "Villa", prixHtDhParM2: COUT.villa, superficieConstruite: r(plancher) }],
+      constructions: [{ libelle: "Villa", prixHtDhParM2: arrondi(COUT.villa * standing), superficieConstruite: r(plancher) }],
       hypotheses: { ascenseurTtc: 0, amenagementsCommuns: 0, dureeChantierMois: 10 },
     };
   }
@@ -203,10 +251,10 @@ export function programmeDefaut(code: string, surfaceTerrain: number, arr?: stri
 
   const constructions =
     prog === "tertiaire"
-      ? [{ libelle: "Bâtiment tertiaire", prixHtDhParM2: COUT.tertiaire, superficieConstruite: r(plancher) }]
+      ? [{ libelle: "Bâtiment tertiaire", prixHtDhParM2: arrondi(COUT.tertiaire * standing), superficieConstruite: r(plancher) }]
       : [
-          { libelle: "Sous-sol et RDC", prixHtDhParM2: COUT.sousSolRdc, superficieConstruite: r(rdc + surfaceTerrain * 0.7) },
-          { libelle: "Étages courants", prixHtDhParM2: COUT.etages, superficieConstruite: r(Math.max(0, plancher - rdc)) },
+          { libelle: "Sous-sol et RDC", prixHtDhParM2: arrondi(COUT.sousSolRdc * standing), superficieConstruite: r(rdc + surfaceTerrain * 0.7) },
+          { libelle: "Étages courants", prixHtDhParM2: arrondi(COUT.etages * standing), superficieConstruite: r(Math.max(0, plancher - rdc)) },
         ];
 
   return {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { simulate } from "@casa/core";
 import { buildInitialScenario } from "./buildInitial";
 import {
+  marcheOf,
   etagesOf,
   prixTerrainOf,
   programmeDefaut,
@@ -148,5 +149,22 @@ describe("COS", () => {
     // D4 Aïn Chock : emprise 25 %, R+1 → 500 m² de plancher sur 1 000 m².
     const v = programmeDefaut("D4", 1000, "Arrondissement Ain Chock").ventes[0]!;
     expect(v.superficieVendable).toBe(500);
+  });
+});
+
+describe("prix par arrondissement", () => {
+  it("recale le niveau de prix sur le prix moyen des appartements de l'arrondissement", () => {
+    const anfa = marcheOf("B5", "Arrondissement Anfa");
+    const moumen = marcheOf("B5", "Arrondissement Sidi Moumen");
+    expect(anfa.vente).toBe(19000);
+    expect(moumen.vente).toBe(7000);
+    expect(moumen.terrain).toBeLessThan(anfa.terrain);
+    // Sans arrondissement connu : moyenne de la ville.
+    expect(marcheOf("B5").vente).toBe(13000);
+  });
+
+  it("déduit le terrain indicatif de ce que le règlement permet de construire", () => {
+    // Même arrondissement : un terrain d'immeuble R+5 vaut plus au m² qu'un terrain de villa.
+    expect(marcheOf("B5", "Arrondissement Anfa").terrain).toBeGreaterThan(marcheOf("D4", "Arrondissement Anfa").terrain);
   });
 });
