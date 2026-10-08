@@ -45,13 +45,13 @@ const COUT = {
   tertiaire: 4000,
 };
 
-export const marcheOf = (code: string): Marche => MARCHE[familleOf(code)] ?? MARCHE_AUTRE;
-export const prixTerrainOf = (code: string): number => marcheOf(code).terrain;
+export const marcheOf = (code: string, arr?: string): Marche => MARCHE[familleOf(code, arr)] ?? MARCHE_AUTRE;
+export const prixTerrainOf = (code: string, arr?: string): number => marcheOf(code, arr).terrain;
 
 /** Programme type selon les usages autorisés par le règlement. */
-export function programmeOf(code: string): Programme {
-  const zone = getZone(code);
-  const famille = familleOf(code);
+export function programmeOf(code: string, arr?: string): Programme {
+  const zone = getZone(code, arr);
+  const famille = familleOf(code, arr);
   if (famille === "D") return "villa";
   if (famille === "I") return "tertiaire";
   const autorises = zone?.usagesAutorises.join(" ").toLowerCase() ?? "";
@@ -84,19 +84,19 @@ const ETAGES_ZONE: Record<string, number> = {
   E3: 3, // « R+2/R+3 »
 };
 
-export function etagesOf(code: string, zone: Zone | undefined = getZone(code)): number {
+export function etagesOf(code: string, zone: Zone | undefined = getZone(code), arr?: string): number {
   const p = zone?.parametres;
   if (p?.nombreEtagesMax != null && p.nombreEtagesMax > 0) return p.nombreEtagesMax;
-  const base = baseZoneCode(code) ?? code; // sous-secteur « E3s » → « E3 »
+  const base = baseZoneCode(code, arr) ?? code; // sous-secteur « E3s » → « E3 »
   if (ETAGES_ZONE[base] != null) return ETAGES_ZONE[base]!;
   const h = p?.hauteurMaxM ?? hauteurDepuisCode(code);
   if (h != null) return etagesPourHauteur(h);
-  return ETAGES_FAMILLE[familleOf(code)] ?? 4;
+  return ETAGES_FAMILLE[familleOf(code, arr)] ?? 4;
 }
 
 /** Surface de terrain type : 500 m², relevée au minimum réglementaire si besoin. */
-export function surfaceParDefaut(code: string): number {
-  const min = getZone(code)?.parametres.surfaceMinParcelleM2 ?? 0;
+export function surfaceParDefaut(code: string, arr?: string): number {
+  const min = getZone(code, arr)?.parametres.surfaceMinParcelleM2 ?? 0;
   return Math.max(500, min);
 }
 
@@ -108,10 +108,10 @@ function commerceAutorise(zone: Zone | undefined): boolean {
 }
 
 /** Phrase courte affichée sous « Votre projet ». */
-export function resumeProgramme(code: string): string {
-  const zone = getZone(code);
-  const etages = etagesOf(code, zone);
-  const prog = programmeOf(code);
+export function resumeProgramme(code: string, arr?: string): string {
+  const zone = getZone(code, arr);
+  const etages = etagesOf(code, zone, arr);
+  const prog = programmeOf(code, arr);
   const mixite = zone?.parametres.mixiteSocialePct;
   if (prog === "villa") return `Villa R+${etages}, conformément au règlement (habitat individuel).`;
   if (prog === "tertiaire") return `Immeuble de bureaux R+${etages}${commerceAutorise(zone) ? " avec commerces en RDC" : ""}.`;
@@ -139,17 +139,17 @@ export interface ProgrammeDefaut {
  * Surface vendable ≈ 85 % de la surface plancher (parties communes déduites),
  * 100 % pour une villa.
  */
-export function programmeDefaut(code: string, surfaceTerrain: number): ProgrammeDefaut {
-  const zone = getZone(code);
-  const etages = etagesOf(code, zone);
+export function programmeDefaut(code: string, surfaceTerrain: number, arr?: string): ProgrammeDefaut {
+  const zone = getZone(code, arr);
+  const etages = etagesOf(code, zone, arr);
   const niveaux = etages + 1;
-  const prog = programmeOf(code);
-  const m = marcheOf(code);
+  const prog = programmeOf(code, arr);
+  const m = marcheOf(code, arr);
   const cos = zone?.parametres.cos ?? null;
   const r = Math.round;
 
   if (prog === "villa") {
-    const emprise = baseZoneCode(code) === "D1" ? 0.5 : 0.4;
+    const emprise = baseZoneCode(code, arr) === "D1" ? 0.5 : 0.4;
     const plancher = surfaceTerrain * emprise * niveaux;
     return {
       etages,
@@ -160,7 +160,9 @@ export function programmeDefaut(code: string, surfaceTerrain: number): Programme
   }
 
   const emprise = prog === "tertiaire" ? 0.5 : 0.7;
-  const plancher = surfaceTerrain * (cos ?? emprise) * niveaux;
+  // COS de la parcelle (fiches AUC) : plafond de la surface de plancher totale.
+  const plafond = zone?.parametres.cosGlobal != null ? surfaceTerrain * zone.parametres.cosGlobal : Infinity;
+  const plancher = Math.min(surfaceTerrain * (cos ?? emprise) * niveaux, plafond);
   const vendable = plancher * 0.85;
   const commerce = commerceAutorise(zone);
   // Commerce : RDC uniquement, au plus 30 % du vendable et l'emprise au sol.

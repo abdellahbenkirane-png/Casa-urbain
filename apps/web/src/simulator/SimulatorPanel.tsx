@@ -89,8 +89,8 @@ export function SimulatorPanel({
     [draft, result],
   );
   const violations = useMemo(
-    () => (draft ? validate(draft, parcelle.zone) : []),
-    [draft, parcelle.zone],
+    () => (draft ? validate(draft, parcelle.zone, parcelle.arrondissement) : []),
+    [draft, parcelle.zone, parcelle.arrondissement],
   );
 
   if (!draft || !result || !advanced) return null;
@@ -177,7 +177,7 @@ export function SimulatorPanel({
         </section>
       )}
 
-      <KeyInputs input={draft} onChange={onChange} defaultSurface={defaultSurface} zone={parcelle.zone} />
+      <KeyInputs input={draft} onChange={onChange} defaultSurface={defaultSurface} zone={parcelle.zone} arrondissement={parcelle.arrondissement} />
 
       <div className="accordion">
         <details>

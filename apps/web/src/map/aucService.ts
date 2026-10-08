@@ -133,7 +133,7 @@ function esriToGeojson(data: EsriResponse): GeoJSON.FeatureCollection {
         ...f.attributes,
         aucId: typeof f.attributes.id === "number" ? f.attributes.id : 0,
         // Famille précalculée : l'expression de couleur MapLibre reste un simple match.
-        famille: secteur ? familleOf(secteur) : "?",
+        famille: secteur ? familleOf(secteur, String(f.attributes.commune ?? "")) : "?",
       },
       geometry: ringsToPolygon(rings),
     });

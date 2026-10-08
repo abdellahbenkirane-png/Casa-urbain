@@ -11,7 +11,7 @@ import { programmeDefaut } from "./zoneProfiles";
  * L'investisseur ajuste tout dans le formulaire ensuite.
  */
 export function buildInitialScenario(parcelle: ParcelleProperties): SimulationInput {
-  const prog = programmeDefaut(parcelle.zone, parcelle.surface);
+  const prog = programmeDefaut(parcelle.zone, parcelle.surface, parcelle.arrondissement);
   const h = prog.hypotheses;
 
   return {

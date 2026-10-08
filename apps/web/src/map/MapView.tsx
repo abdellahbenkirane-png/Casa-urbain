@@ -25,6 +25,8 @@ export interface ParcelleProperties {
   facade2?: number;
   prixTerrainMedianDhM2: number;
   prefecture?: string;
+  /** Arrondissement ou commune AUC : choisit le règlement applicable. */
+  arrondissement?: string;
 }
 
 
@@ -509,16 +511,17 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           // plusieurs hectares). Par défaut on part d'une parcelle type de
           // 500 m², relevée au minimum réglementaire de la zone (ex. D4 :
           // 1 000 m²), que l'utilisateur ajustera ensuite.
-          const surface = surfaceParDefaut(secteur);
           const prefecture = String(a.prefecture ?? "").trim();
           const commune = String(a.commune ?? "").trim();
+          const surface = surfaceParDefaut(secteur, commune);
           onParcelSelect({
             id: `AUC-${a.aucId ?? a.id ?? "?"}`,
             adresse: `${commune || prefecture || "Casablanca"} · secteur ${secteur}`,
             zone: secteur,
             surface,
-            prixTerrainMedianDhM2: prixTerrainOf(secteur),
+            prixTerrainMedianDhM2: prixTerrainOf(secteur, commune),
             prefecture: prefecture || undefined,
+            arrondissement: commune || undefined,
           });
         });
         const setPointer = (l: string) => {
@@ -790,8 +793,9 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
       adresse: commune ? `Terrain dessiné · ${commune}` : "Terrain dessiné à la main",
       zone,
       surface: Math.round(drawArea),
-      prixTerrainMedianDhM2: prixTerrainOf(zone),
+      prixTerrainMedianDhM2: prixTerrainOf(zone, commune),
       prefecture,
+      arrondissement: commune || undefined,
     });
   };
 

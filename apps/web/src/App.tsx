@@ -98,7 +98,7 @@ export function App() {
             <div className="panel-top" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <header className="parcel-header">
               <div className="parcel-header-main">
-                <ZoneBadge code={parcelle.zone} />
+                <ZoneBadge code={parcelle.zone} arrondissement={parcelle.arrondissement} />
                 <div>
                   <h2>{parcelle.adresse}</h2>
                   <p>

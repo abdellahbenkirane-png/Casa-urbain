@@ -16,8 +16,8 @@ export interface Violation {
  * - error : la règle est explicite et l'écart est franc → bloquant pour un PC
  * - warning : la valeur est limite ou la règle est implicite → à valider
  */
-export function validate(input: SimulationInput, zoneCode: string): Violation[] {
-  const zone = getZone(zoneCode);
+export function validate(input: SimulationInput, zoneCode: string, arr?: string): Violation[] {
+  const zone = getZone(zoneCode, arr);
   if (!zone) return [];
   const v: Violation[] = [];
   const p = zone.parametres;

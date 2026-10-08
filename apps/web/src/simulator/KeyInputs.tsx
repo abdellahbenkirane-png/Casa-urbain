@@ -16,10 +16,13 @@ export function KeyInputs({
   onChange,
   defaultSurface,
   zone,
+  arrondissement,
 }: {
   input: SimulationInput;
   /** Code de zone, pour rappeler le programme type retenu par défaut. */
   zone: string;
+  /** Arrondissement AUC : règlement propre, s'il est intégré. */
+  arrondissement?: string;
   onChange: (next: SimulationInput) => void;
   /** true si la surface vient d'une valeur par défaut, pas du terrain réel. */
   defaultSurface: boolean;
@@ -93,7 +96,7 @@ export function KeyInputs({
     <section className="card">
       <div>
         <h3 className="card-title">Votre projet</h3>
-        <p className="section-help">Par défaut : {resumeProgramme(zone)}</p>
+        <p className="section-help">Par défaut : {resumeProgramme(zone, arrondissement)}</p>
       </div>
       <div className="field-grid">
         <label className={defaultSurface ? "needs-input" : ""}>

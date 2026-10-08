@@ -106,3 +106,27 @@ describe("conformité", () => {
     expect(validate(input, "B3").some((x) => x.field === "terrain.nombreEtages")).toBe(true);
   });
 });
+
+describe("règlements par arrondissement (fiches AUC)", async () => {
+  const data = (await import("../../../../data/reglement/auc-arrondissements.json")).default as unknown as {
+    arrondissements: Record<string, { zones: Record<string, { famille: string; parametres: Record<string, unknown> }> }>;
+  };
+  const { FAMILLE_COLORS } = await import("../zoning/zones");
+  const cas = Object.entries(data.arrondissements).flatMap(([arr, a]) =>
+    Object.keys(a.zones).map((code) => [arr, code] as const),
+  );
+
+  it("couvre les 16 arrondissements de la ville (Aïn Chock : référentiel) et les communes", () => {
+    const noms = Object.keys(data.arrondissements);
+    expect(noms.filter((n) => !n.startsWith("Commune ") || n === "Commune Mechouar")).toHaveLength(16);
+    expect(noms).toEqual(expect.arrayContaining(["Commune Bouskoura", "Commune Dar Bouazza", "Commune Mohammedia"]));
+  });
+
+  it.each(cas)("%s / %s : famille connue, scénario chiffré sans NaN", (arr, code) => {
+    expect(FAMILLE_COLORS[data.arrondissements[arr]!.zones[code]!.famille]).toBeDefined();
+    const p = { id: "T", adresse: "t", zone: code, arrondissement: arr,
+      surface: surfaceParDefaut(code, arr), prixTerrainMedianDhM2: prixTerrainOf(code, arr) };
+    const r = simulate(buildInitialScenario(p));
+    expect(Number.isFinite(r.totaux.resultatNet)).toBe(true);
+  });
+});

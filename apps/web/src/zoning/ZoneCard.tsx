@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { getZone, baseZoneCode, familleOf, AUTRE_COLOR, AUTRE_LABEL, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
+import { getZone, baseZoneCode, familleOf, arrKey, isZoneLocale, AUTRE_COLOR, AUTRE_LABEL, FAMILLE_COLORS, FAMILLE_LABELS } from "./zones";
 import { FicheModal } from "./FicheModal";
 import type { ParcelleProperties } from "../map/MapView";
 
@@ -8,8 +8,8 @@ const fmtM = (v: number) => `${v} m`;
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const fmtM2 = (v: number) => `${v.toLocaleString("fr-FR")} m²`;
 
-export function ZoneBadge({ code }: { code: string }) {
-  const color = FAMILLE_COLORS[familleOf(code)] ?? AUTRE_COLOR;
+export function ZoneBadge({ code, arrondissement }: { code: string; arrondissement?: string }) {
+  const color = FAMILLE_COLORS[familleOf(code, arrondissement)] ?? AUTRE_COLOR;
   const known = color !== AUTRE_COLOR;
   return (
     <span className={`zone-badge ${known ? "" : "other"}`} style={{ background: color }} title={code}>
@@ -19,8 +19,8 @@ export function ZoneBadge({ code }: { code: string }) {
 }
 
 /** Règles clés sous forme de liste — partagé avec le simulateur. */
-export function zoneRules(code: string): { label: string; value: string }[] {
-  const zone = getZone(code);
+export function zoneRules(code: string, arr?: string): { label: string; value: string }[] {
+  const zone = getZone(code, arr);
   if (!zone) return [];
   const p = zone.parametres;
   const rows: { label: string; value: string }[] = [];
@@ -34,6 +34,9 @@ export function zoneRules(code: string): { label: string; value: string }[] {
       label: "Hôtel / bureaux",
       value: `${fmtM(p.hauteurHotelBureauM)}${p.etagesHotelBureau ? ` · R+${p.etagesHotelBureau}` : ""}`,
     });
+  if (p.cosGlobal != null)
+    rows.push({ label: "COS", value: p.cosGlobal.toLocaleString("fr-FR") });
+  if (p.cus != null) rows.push({ label: "Emprise au sol", value: fmtPct(p.cus) });
   if (p.surfaceMinParcelleM2 != null)
     rows.push({ label: "Terrain minimum", value: fmtM2(p.surfaceMinParcelleM2) });
   if (p.facadeMinM != null) rows.push({ label: "Façade minimum", value: fmtM(p.facadeMinM) });
@@ -45,9 +48,10 @@ export function zoneRules(code: string): { label: string; value: string }[] {
 }
 
 export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
-  const zone = getZone(parcelle.zone);
+  const arr = parcelle.arrondissement;
+  const zone = getZone(parcelle.zone, arr);
   const [ficheOpen, setFicheOpen] = useState(false);
-  const famille = familleOf(parcelle.zone);
+  const famille = familleOf(parcelle.zone, arr);
   const familleInfo = FAMILLE_LABELS[famille] ?? AUTRE_LABEL;
 
   if (parcelle.zone === "?") {
@@ -76,15 +80,24 @@ export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
     );
   }
 
-  const rows = zoneRules(parcelle.zone);
+  const rows = zoneRules(parcelle.zone, arr);
   const p = zone.parametres;
-  const base = baseZoneCode(parcelle.zone);
+  const base = baseZoneCode(parcelle.zone, arr);
+  // Secteur sans règlement propre intégré (ni fiche d'arrondissement, ni
+  // source citée) : ce sont les règles d'Aïn Chock, à titre indicatif.
+  const repli = arr != null && arrKey(arr) !== "ainchock" && !isZoneLocale(parcelle.zone, arr) && !p.source;
 
   return (
     <>
       <section className="card">
         <h3 className="card-title">{capitalize(zone.nom.replace(/^[^—]+—\s*/, ""))}</h3>
         <p className="card-text">{zone.description}</p>
+        {repli && (
+          <div className="notice info">
+            Le règlement de <strong>{arr}</strong> n'est pas encore intégré pour ce secteur : règles
+            de la zone <strong>{base}</strong> d'Aïn Chock affichées à titre indicatif.
+          </div>
+        )}
         {base && base !== parcelle.zone && (
           <div className="notice info">
             Sous-secteur <strong>{parcelle.zone}</strong> : règles de la zone <strong>{base}</strong>{" "}
@@ -121,6 +134,7 @@ export function ZoneCard({ parcelle }: { parcelle: ParcelleProperties }) {
           </>
         )}
         {p.remarque && <p className="card-note">{p.remarque}</p>}
+        {p.source && <p className="card-note">Source : {p.source}.</p>}
       </section>
 
       {zone.fichePages && zone.fichePages.length > 0 && (
