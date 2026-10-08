@@ -23,3 +23,18 @@ if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
 
 // Ancien cache de tuiles : contenait des tuiles CARTO « API KEY REQUIRED ».
 if ("caches" in window) caches.delete("tile-cache").catch(() => {});
+
+// Après un déploiement, une page restée ouverte peut réclamer un ancien
+// fichier JS qui n'existe plus (ex. au clic sur « Se connecter ») : on
+// recharge une fois pour récupérer la nouvelle version, plutôt que d'échouer.
+window.addEventListener("vite:preloadError", (e) => {
+  const KEY = "casa-reload-after-deploy";
+  if (sessionStorage.getItem(KEY)) return; // déjà tenté : on laisse l'erreur remonter
+  sessionStorage.setItem(KEY, "1");
+  e.preventDefault();
+  window.location.reload();
+});
+window.addEventListener("load", () => {
+  // Chargement réussi : on réarme pour le prochain déploiement.
+  setTimeout(() => sessionStorage.removeItem("casa-reload-after-deploy"), 10_000);
+});
