@@ -196,6 +196,8 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
   // Les clics carte servent à poser des sommets en mode mesure : on ne
   // sélectionne pas de zone pendant ce temps.
   const drawModeRef = useRef(false);
+  // Zones AUC chargées, par identifiant (forme complète pour le contour de sélection).
+  const aucByIdRef = useRef(new Map<number, GeoJSON.Feature>());
   useEffect(() => {
     drawModeRef.current = drawMode;
   }, [drawMode]);
@@ -507,9 +509,17 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
         });
 
         // Click handlers
+        // Le clic renvoie la géométrie découpée par tuile : pour une grande zone,
+        // seul un morceau. On reprend la forme complète depuis les données.
         const highlight = (feature: maplibregl.MapGeoJSONFeature) => {
           const src = map.getSource("selection") as maplibregl.GeoJSONSource | undefined;
-          src?.setData({ type: "Feature", properties: {}, geometry: feature.geometry });
+          const p = feature.properties as Record<string, unknown>;
+          const full =
+            (p.aucId != null ? aucByIdRef.current.get(Number(p.aucId)) : undefined) ??
+            (p.id != null
+              ? PARCELLES_DATA.features.find((f) => f.properties?.id === p.id)
+              : undefined);
+          src?.setData({ type: "Feature", properties: {}, geometry: full?.geometry ?? feature.geometry });
         };
         map.on("click", "parcelles-fill", (e) => {
           const feature = e.features?.[0];
@@ -903,6 +913,11 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
       }
       setSourceData({ type: "FeatureCollection", features });
       setAucCount(features.length);
+      aucByIdRef.current = new Map(
+        features
+          .filter((f) => f.properties?.aucId != null)
+          .map((f) => [Number(f.properties!.aucId), f] as [number, GeoJSON.Feature]),
+      );
     };
 
     const syncStatus = () => {

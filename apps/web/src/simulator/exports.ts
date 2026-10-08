@@ -67,10 +67,14 @@ export async function exportScenarioXlsx(input: SimulationInput): Promise<void> 
   addLine("IS", result.totaux.is);
   const rn = ws.addRow(["Résultat net", null, null, result.totaux.resultatNet]);
   rn.font = { bold: true };
-  addLine("Marge nette", result.totaux.margeNette);
-  addLine("ROE projet", result.totaux.roe);
-  addLine("TRI", adv.tri ?? 0);
-  addLine("Cash-on-cash / an", adv.cashOnCash);
+  // Ratios : fractions (0,39 = 39 %) → format pourcentage, sinon Excel les
+  // affichait tous à « 0 » avec le format entier de la colonne.
+  const ratioRows = [
+    ws.addRow(["Marge nette", null, null, result.totaux.margeNette]),
+    ws.addRow(["ROE projet", null, null, result.totaux.roe]),
+    ws.addRow(["TRI", null, null, adv.tri ?? "n.c."]),
+    ws.addRow(["Cash-on-cash / an", null, null, adv.cashOnCash ?? "n.c."]),
+  ];
   addLine("Point mort prix apparts (DH/m²)", adv.pointMortPrixApparts ?? 0);
 
   ws.eachRow((row) => {
@@ -78,6 +82,7 @@ export async function exportScenarioXlsx(input: SimulationInput): Promise<void> 
     row.getCell(2).numFmt = "#,##0";
     row.getCell(3).numFmt = "#,##0";
   });
+  for (const row of ratioRows) row.getCell(4).numFmt = "0.0%";
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {
@@ -91,8 +96,8 @@ export function exportScenarioPdf(input: SimulationInput): void {
   const adv = computeAdvancedMetrics(input, result);
   const win = window.open("", "_blank", "width=900,height=1200");
   if (!win) {
-    alert("Activez l'ouverture de fenêtres pour générer le PDF.");
-    return;
+    // Remonté à l'appelant : sinon le site affichait « Aperçu PDF ouvert ».
+    throw new Error("fenêtre bloquée par le navigateur, autorisez les pop-ups pour ce site");
   }
   win.document.write(buildPrintHtml(input, result, adv));
   win.document.close();

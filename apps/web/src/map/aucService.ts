@@ -153,6 +153,32 @@ function looksMercator(rings: number[][][]): boolean {
   return false;
 }
 
+/** Aire signée (formule du lacet) : < 0 = sens horaire. */
+function signedArea(ring: [number, number][]): number {
+  let a = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    a += ring[i]![0] * ring[i + 1]![1] - ring[i + 1]![0] * ring[i]![1];
+  }
+  return a / 2;
+}
+
+function pointInRing([x, y]: [number, number], ring: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]!;
+    const [xj, yj] = ring[j]!;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Anneaux ESRI → GeoJSON. Convention ESRI : anneaux extérieurs dans le sens
+ * horaire, trous dans le sens anti-horaire. Chaque trou est rattaché à
+ * l'anneau extérieur qui le contient (avant, chaque anneau devenait un
+ * polygone plein : les trous apparaissaient remplis par-dessus les zones
+ * enclavées, et un clic dans l'enclave sélectionnait la mauvaise zone).
+ */
 function ringsToPolygon(
   rings: number[][][],
 ): GeoJSON.Polygon | GeoJSON.MultiPolygon {
@@ -160,10 +186,24 @@ function ringsToPolygon(
   const project = reproject
     ? (ring: number[][]) => ring.map((p) => mercToWgs84([p[0]!, p[1]!]))
     : (ring: number[][]) => ring.map((p) => [p[0]!, p[1]!] as [number, number]);
-  if (rings.length === 1) {
-    return { type: "Polygon", coordinates: [project(rings[0]!)] };
+  const projected = rings.map(project);
+  if (projected.length === 1) {
+    return { type: "Polygon", coordinates: [projected[0]!] };
   }
-  return { type: "MultiPolygon", coordinates: rings.map((r) => [project(r)]) };
+  const outers: [number, number][][][] = [];
+  const holes: [number, number][][] = [];
+  for (const r of projected) (signedArea(r) <= 0 ? outers.push([r]) : holes.push(r));
+  // Données sans anneau horaire (orientation inattendue) : ancien comportement.
+  if (outers.length === 0) {
+    return { type: "MultiPolygon", coordinates: projected.map((r) => [r]) };
+  }
+  for (const h of holes) {
+    const owner = outers.find((poly) => pointInRing(h[0]!, poly[0]!)) ?? outers[outers.length - 1]!;
+    owner.push(h);
+  }
+  return outers.length === 1
+    ? { type: "Polygon", coordinates: outers[0]! }
+    : { type: "MultiPolygon", coordinates: outers };
 }
 
 async function fetchLayerEsri(
