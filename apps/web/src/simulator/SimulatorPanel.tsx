@@ -15,7 +15,6 @@ import { exportScenarioPdf, exportScenarioXlsx } from "./exports";
 import { validate } from "./zoneValidation";
 import type { ParcelleProperties } from "../map/MapView";
 import { useAccount } from "../cloud/account";
-import { cloudEnabled } from "../cloud/firebase";
 
 export function SimulatorPanel({
   parcelle,
@@ -58,7 +57,6 @@ export function SimulatorPanel({
   // Connexion / déconnexion : les scénarios viennent d'un autre endroit
   // (compte ou appareil) → on recharge.
   const uid = useAccount((s) => s.user?.uid ?? null);
-  const signIn = useAccount((s) => s.signIn);
   useEffect(() => {
     loadForParcelle(parcelle.id);
   }, [parcelle.id, loadForParcelle, uid]);
@@ -190,15 +188,6 @@ export function SimulatorPanel({
         </details>
       </div>
 
-      {cloudEnabled && !uid && (
-        <p className="save-hint">
-          Vos scénarios sont gardés sur cet appareil.{" "}
-          <button className="link-btn" onClick={() => void signIn()}>
-            Connectez-vous avec Google
-          </button>{" "}
-          pour les retrouver sur tous vos appareils.
-        </p>
-      )}
 
       <p className="disclaimer">
         Estimation indicative basée sur des prix moyens de marché. Ne remplace pas une étude

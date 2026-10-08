@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard, ZoneBadge } from "./zoning/ZoneCard";
 import { useAccount } from "./cloud/account";
+import { cloudEnabled } from "./cloud/firebase";
+import { LoginGate } from "./cloud/LoginGate";
 
 // Code-split : le simulateur est chargé seulement au 1er clic sur une parcelle.
 // Économise ~80 kB sur le bundle initial.
@@ -17,6 +19,9 @@ export function App() {
   const [parcelle, setParcelle] = useState<ParcelleProperties | null>(null);
   const [sheet, setSheet] = useState<Sheet>("peek");
   const [tab, setTab] = useState<Tab>("simulation");
+  // Le calculateur est réservé aux utilisateurs connectés (carte et règles libres).
+  const user = useAccount((s) => s.user);
+  const gated = cloudEnabled && !user;
 
   // Session de compte : démarrée après le premier affichage (le SDK Firebase
   // est chargé à la demande, il ne retarde pas la carte).
@@ -139,8 +144,10 @@ export function App() {
 
             <div className="panel-body">
               {tab === "reglement" && <ZoneCard parcelle={parcelle} />}
+              {tab === "simulation" && gated && <LoginGate zone={parcelle.zone} />}
               {/* Toujours monté : changer d'onglet ne doit pas perdre le brouillon en cours. */}
-              <div hidden={tab !== "simulation"}>
+              <div hidden={tab !== "simulation" || gated}>
+                {!gated && (
                 <Suspense fallback={<div className="lazy-loading">Chargement du simulateur…</div>}>
                   <SimulatorPanel
                     key={parcelle.id}
@@ -148,6 +155,7 @@ export function App() {
                     onShowRules={() => setTab("reglement")}
                   />
                 </Suspense>
+                )}
               </div>
             </div>
           </>
