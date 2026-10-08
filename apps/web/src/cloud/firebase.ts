@@ -24,39 +24,41 @@ const config = {
 /** Vrai quand le projet Firebase est configuré pour ce déploiement. */
 export const cloudEnabled = Boolean(config.apiKey && config.projectId && config.appId);
 
-export interface Cloud {
-  app: FirebaseApp;
-  auth: Auth;
-  db: Firestore;
+let appPromise: Promise<FirebaseApp> | null = null;
+let authPromise: Promise<Auth> | null = null;
+let dbPromise: Promise<Firestore> | null = null;
+
+function getApp(): Promise<FirebaseApp> {
+  if (!cloudEnabled) return Promise.reject(new Error("Comptes non configurés"));
+  appPromise ??= import("firebase/app").then(({ initializeApp }) => initializeApp(config));
+  return appPromise;
 }
 
-let cloudPromise: Promise<Cloud> | null = null;
-
-export function getCloud(): Promise<Cloud> {
-  if (!cloudEnabled) return Promise.reject(new Error("Comptes non configurés"));
-  cloudPromise ??= (async () => {
-    const [
-      { initializeApp },
-      { getAuth },
-      { initializeFirestore, persistentLocalCache, persistentMultipleTabManager },
-    ] =
-      await Promise.all([
-        import("firebase/app"),
-        import("firebase/auth"),
-        import("firebase/firestore"),
-      ]);
-    const app = initializeApp(config);
+/**
+ * Connexion seule : chargée au démarrage pour savoir si l'utilisateur est
+ * connecté. Firestore (le plus lourd) n'est chargé qu'à l'ouverture du
+ * calculateur — les visiteurs qui ne regardent que la carte ne le paient pas.
+ */
+export function getAuthClient(): Promise<Auth> {
+  authPromise ??= Promise.all([getApp(), import("firebase/auth")]).then(([app, { getAuth }]) => {
     const auth = getAuth(app);
     auth.languageCode = "fr";
-    // Cache local : les scénarios restent consultables hors connexion. Mode
-    // multi-onglets : le site peut être ouvert dans plusieurs onglets à la fois.
-    const db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-      // Champs facultatifs absents (ex. façade inconnue d'une zone AUC) :
-      // Firestore refuse `undefined` par défaut et l'enregistrement échouait.
-      ignoreUndefinedProperties: true,
-    });
-    return { app, auth, db };
-  })();
-  return cloudPromise;
+    return auth;
+  });
+  return authPromise;
+}
+
+export function getDb(): Promise<Firestore> {
+  dbPromise ??= Promise.all([getApp(), import("firebase/firestore")]).then(
+    ([app, { initializeFirestore, persistentLocalCache, persistentMultipleTabManager }]) =>
+      initializeFirestore(app, {
+        // Cache local : les scénarios restent consultables hors connexion. Mode
+        // multi-onglets : le site peut être ouvert dans plusieurs onglets à la fois.
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+        // Champs facultatifs absents (ex. façade inconnue d'une zone AUC) :
+        // Firestore refuse `undefined` par défaut et l'enregistrement échouait.
+        ignoreUndefinedProperties: true,
+      }),
+  );
+  return dbPromise;
 }

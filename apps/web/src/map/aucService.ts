@@ -1,58 +1,16 @@
 // Client minimaliste pour le service ArcGIS REST de l'Agence Urbaine de Casablanca
 // (https://e-auc.org/karazal). Pas de SDK ESRI : appel direct + conversion ESRI → GeoJSON.
 //
-// Découvert via l'inspection du géoportail public e-auc.org/karazal :
-//   GET /karazal/kgis/rest/featuresService/features/{layer}/all/1/query
-//   Headers : CORS ouvert (Access-Control-Allow-Origin: *)
-//   Sortie : { features: [{attributes, geometry: {rings}}], spatialReference: {wkid: 102100} }
-//
-// IDs des calques karazal — confirmés par inspection du géoportail
-// e-auc.org/karazal :
-//   Layer-579747 → ZONAGE (attributs zone, secteur, commune, prefecture, area)
-//   Layer-579748 → ÉQUIPEMENTS & espaces publics (attribut nature)
-//
-// Possibilité d'override via localStorage.auc-zonage-layer-id pour explorer
-// d'autres calques sans redéployer.
-const STORAGE_KEY = "auc-zonage-layer-id";
+// Calque de zonage karazal : Layer-579747 (attributs zone, secteur, commune,
+// prefecture, area). Le client passe par notre relais /api/auc (fonction
+// Vercel, et middleware Vite en dev) : le service AUC ne renvoie pas toujours
+// les en-têtes CORS attendus.
+import { familleOf } from "../zoning/zones";
 
-function readLayerOverride(): string | null {
-  if (typeof localStorage === "undefined") return null;
-  return localStorage.getItem(STORAGE_KEY);
-}
-
-export function setZonageLayerId(id: string): void {
-  if (typeof localStorage === "undefined") return;
-  if (id) localStorage.setItem(STORAGE_KEY, id);
-  else localStorage.removeItem(STORAGE_KEY);
-}
-
-const DEFAULT_LAYERS = {
-  zonage: "Layer-579747",
-  equipements: "Layer-579748",
-} as const;
-
-/**
- * Renvoie l'ID actuel du calque (override localStorage en priorité).
- * Évalué dynamiquement à chaque appel — donc setZonageLayerId est pris
- * en compte sans recharger la page.
- */
-export function currentZonageLayer(): string {
-  return readLayerOverride() ?? DEFAULT_LAYERS.zonage;
-}
-
-export const AUC_LAYERS = {
-  get zonage() {
-    return currentZonageLayer();
-  },
-  equipements: DEFAULT_LAYERS.equipements,
-};
-
-export type AucLayer = keyof typeof DEFAULT_LAYERS;
-
-// Le client appelle notre proxy Vercel (apps/web/api/auc.js), qui relaie
-// au service AUC. Cela contourne les restrictions CORS observées en prod
-// quand on essaie d'attaquer e-auc.org directement depuis le navigateur.
+const ZONAGE_LAYER = "Layer-579747";
 const API_ROOT = "/api/auc";
+// Ne pas modifier sans raison : l'URL exacte sert de clé au cache CDN.
+const ZONAGE_FIELDS = ["id", "zone", "secteur", "commune", "prefecture", "area", "label", "name", "origine"];
 
 export interface BBox4326 {
   W: number;
@@ -61,49 +19,22 @@ export interface BBox4326 {
   N: number;
 }
 
-export interface AucFeature<A> {
-  type: "Feature";
-  properties: A & { aucId: number; aucLayer: AucLayer };
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
-}
-
-export interface ZoneAttributes {
-  zone?: string;
-  secteur?: string;
-  commune?: string;
-  prefecture?: string;
-  area?: number;
-  label?: string;
-  name?: string;
-  origine?: string;
-}
-
-export interface EquipementAttributes {
-  nature?: string;
-  area?: number;
-  label?: string;
-}
-
 interface EsriFeature {
-  attributes: Record<string, unknown> & { id?: number };
+  attributes: Record<string, unknown> & { id?: number; secteur?: unknown };
   geometry?: { rings?: number[][][] };
 }
 
 interface EsriResponse {
   features?: EsriFeature[];
-  exceededTransferLimit?: boolean;
-  spatialReference?: { wkid?: number; latestWkid?: number };
 }
 
 /**
- * Construit l'URL de requête pour un calque ArcGIS karazal.
- *
- * - inSR/outSR = 4326 → on parle WGS 84 dans toutes les directions
- * - geometryType = esriGeometryEnvelope → bbox simple
- * - returnExceededLimitFeatures = true → indique au serveur qu'on accepte
- *   éventuellement plus de features que la limite par défaut
+ * Requête ArcGIS « query » sur une emprise :
+ *  - inSR/outSR = 4326 → WGS 84 dans les deux sens
+ *  - geometryType = esriGeometryEnvelope → bbox simple
+ *  - returnExceededLimitFeatures = true → accepte plus que la limite par défaut
  */
-function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
+function buildUrl(bbox: BBox4326): string {
   const geom = JSON.stringify({
     xmin: bbox.W,
     ymin: bbox.S,
@@ -112,10 +43,10 @@ function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
     spatialReference: { wkid: 4326 },
   });
   const params = new URLSearchParams({
-    layer,
+    layer: ZONAGE_LAYER,
     f: "json",
     where: "1=1",
-    outFields: fields.join(","),
+    outFields: ZONAGE_FIELDS.join(","),
     geometry: geom,
     geometryType: "esriGeometryEnvelope",
     spatialRel: "esriSpatialRelIntersects",
@@ -134,7 +65,6 @@ function buildUrl(layer: string, bbox: BBox4326, fields: string[]): string {
 // 4326 → on ne peut pas se fier à cette annonce.
 const R_EARTH = 6378137;
 const RAD_TO_DEG = 180 / Math.PI;
-const MERC_THRESHOLD = 1000;
 
 function mercToWgs84([x, y]: [number, number]): [number, number] {
   const lng = (x / R_EARTH) * RAD_TO_DEG;
@@ -142,16 +72,7 @@ function mercToWgs84([x, y]: [number, number]): [number, number] {
   return [lng, lat];
 }
 
-function looksMercator(rings: number[][][]): boolean {
-  for (const ring of rings) {
-    for (const p of ring) {
-      const x = p[0];
-      if (typeof x === "number" && Math.abs(x) > MERC_THRESHOLD) return true;
-      return false; // 1er point examiné suffit
-    }
-  }
-  return false;
-}
+const looksMercator = (rings: number[][][]) => Math.abs(rings[0]?.[0]?.[0] ?? 0) > 1000;
 
 /** Aire signée (formule du lacet) : < 0 = sens horaire. */
 function signedArea(ring: [number, number][]): number {
@@ -175,28 +96,22 @@ function pointInRing([x, y]: [number, number], ring: [number, number][]): boolea
 /**
  * Anneaux ESRI → GeoJSON. Convention ESRI : anneaux extérieurs dans le sens
  * horaire, trous dans le sens anti-horaire. Chaque trou est rattaché à
- * l'anneau extérieur qui le contient (avant, chaque anneau devenait un
- * polygone plein : les trous apparaissaient remplis par-dessus les zones
- * enclavées, et un clic dans l'enclave sélectionnait la mauvaise zone).
+ * l'anneau extérieur qui le contient (sinon les trous apparaissent remplis
+ * par-dessus les zones enclavées, et un clic dans l'enclave sélectionne la
+ * mauvaise zone).
  */
-function ringsToPolygon(
-  rings: number[][][],
-): GeoJSON.Polygon | GeoJSON.MultiPolygon {
+function ringsToPolygon(rings: number[][][]): GeoJSON.Polygon | GeoJSON.MultiPolygon {
   const reproject = looksMercator(rings);
-  const project = reproject
-    ? (ring: number[][]) => ring.map((p) => mercToWgs84([p[0]!, p[1]!]))
-    : (ring: number[][]) => ring.map((p) => [p[0]!, p[1]!] as [number, number]);
-  const projected = rings.map(project);
-  if (projected.length === 1) {
-    return { type: "Polygon", coordinates: [projected[0]!] };
-  }
+  const projected = rings.map((ring) =>
+    ring.map((p) => (reproject ? mercToWgs84([p[0]!, p[1]!]) : ([p[0]!, p[1]!] as [number, number]))),
+  );
+  if (projected.length === 1) return { type: "Polygon", coordinates: [projected[0]!] };
+
   const outers: [number, number][][][] = [];
   const holes: [number, number][][] = [];
   for (const r of projected) (signedArea(r) <= 0 ? outers.push([r]) : holes.push(r));
-  // Données sans anneau horaire (orientation inattendue) : ancien comportement.
-  if (outers.length === 0) {
-    return { type: "MultiPolygon", coordinates: projected.map((r) => [r]) };
-  }
+  // Aucun anneau horaire (orientation inattendue) : un polygone par anneau.
+  if (outers.length === 0) return { type: "MultiPolygon", coordinates: projected.map((r) => [r]) };
   for (const h of holes) {
     const owner = outers.find((poly) => pointInRing(h[0]!, poly[0]!)) ?? outers[outers.length - 1]!;
     owner.push(h);
@@ -206,104 +121,47 @@ function ringsToPolygon(
     : { type: "MultiPolygon", coordinates: outers };
 }
 
-async function fetchLayerEsri(
-  layerId: string,
-  bbox: BBox4326,
-  fields: string[],
-  signal?: AbortSignal,
-): Promise<EsriResponse> {
-  const url = buildUrl(layerId, bbox, fields);
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error(`AUC ${layerId} HTTP ${res.status}`);
-  return res.json();
-}
-
-// Cache LRU des réponses AUC zonage. Clé = bbox arrondi à 3 décimales
-// (≈ 110 m de précision suffisant pour ré-utiliser une réponse après un
-// petit pan). 50 entrées max ; au-delà la plus ancienne est éjectée.
-const ZONAGE_CACHE = new Map<string, GeoJSON.FeatureCollection>();
-const ZONAGE_CACHE_MAX = 50;
-
-function bboxKey(b: BBox4326): string {
-  const r = (n: number) => n.toFixed(3);
-  return `${r(b.W)},${r(b.S)},${r(b.E)},${r(b.N)}|${currentZonageLayer()}`;
-}
-
-export async function fetchZonage(
-  bbox: BBox4326,
-  signal?: AbortSignal,
-): Promise<GeoJSON.FeatureCollection> {
-  const key = bboxKey(bbox);
-  const cached = ZONAGE_CACHE.get(key);
-  if (cached) {
-    // Touch (LRU) : ré-insère pour mettre en tête.
-    ZONAGE_CACHE.delete(key);
-    ZONAGE_CACHE.set(key, cached);
-    return cached;
-  }
-  const data = await fetchLayerEsri(
-    AUC_LAYERS.zonage,
-    bbox,
-    ["id", "zone", "secteur", "commune", "prefecture", "area", "label", "name", "origine"],
-    signal,
-  );
-  const fc = esriToGeojson<ZoneAttributes>(data, "zonage");
-  ZONAGE_CACHE.set(key, fc);
-  if (ZONAGE_CACHE.size > ZONAGE_CACHE_MAX) {
-    const first = ZONAGE_CACHE.keys().next().value;
-    if (first) ZONAGE_CACHE.delete(first);
-  }
-  return fc;
-}
-
-export async function fetchEquipements(
-  bbox: BBox4326,
-  signal?: AbortSignal,
-): Promise<GeoJSON.FeatureCollection> {
-  const data = await fetchLayerEsri(
-    AUC_LAYERS.equipements,
-    bbox,
-    ["id", "nature", "area", "label"],
-    signal,
-  );
-  return esriToGeojson<EquipementAttributes>(data, "equipements");
-}
-
-/**
- * Calcule la famille de zone (A, B, C, D, E, I, PB, PU, S, ZR…) à partir
- * du code de sous-secteur (B4, E2, A6, PBC5'…). Utilisé pour colorer la
- * carte sans avoir à monter une expression MapLibre tordue.
- */
-export function familleOf(secteur: unknown): string {
-  if (typeof secteur !== "string") return "?";
-  const s = secteur.trim();
-  if (!s) return "?";
-  if (s.startsWith("PB")) return "PB";
-  if (s.startsWith("PU")) return "PU";
-  if (s.startsWith("ZR")) return "ZR";
-  return s.charAt(0).toUpperCase();
-}
-
-function esriToGeojson<A>(
-  data: EsriResponse,
-  layerKey: AucLayer,
-): GeoJSON.FeatureCollection {
+function esriToGeojson(data: EsriResponse): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
   for (const f of data.features ?? []) {
     const rings = f.geometry?.rings;
     if (!rings || rings.length === 0) continue;
-    const id = typeof f.attributes.id === "number" ? f.attributes.id : 0;
-    const famille = familleOf((f.attributes as { secteur?: unknown }).secteur);
+    const secteur = typeof f.attributes.secteur === "string" ? f.attributes.secteur.trim() : "";
     features.push({
       type: "Feature",
       properties: {
-        ...(f.attributes as A),
-        aucId: id,
-        aucLayer: layerKey,
-        famille,
+        ...f.attributes,
+        aucId: typeof f.attributes.id === "number" ? f.attributes.id : 0,
+        // Famille précalculée : l'expression de couleur MapLibre reste un simple match.
+        famille: secteur ? familleOf(secteur) : "?",
       },
       geometry: ringsToPolygon(rings),
     });
   }
   return { type: "FeatureCollection", features };
+}
+
+// Petit cache mémoire (LRU, 50 emprises) : réaffichage immédiat quand on
+// désactive puis réactive le calque. Le cache durable est assuré par le CDN
+// Vercel et le service worker.
+const CACHE = new Map<string, GeoJSON.FeatureCollection>();
+const CACHE_MAX = 50;
+
+export async function fetchZonage(
+  bbox: BBox4326,
+  signal?: AbortSignal,
+): Promise<GeoJSON.FeatureCollection> {
+  const url = buildUrl(bbox);
+  const cached = CACHE.get(url);
+  if (cached) {
+    CACHE.delete(url);
+    CACHE.set(url, cached);
+    return cached;
+  }
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`AUC HTTP ${res.status}`);
+  const fc = esriToGeojson((await res.json()) as EsriResponse);
+  CACHE.set(url, fc);
+  if (CACHE.size > CACHE_MAX) CACHE.delete(CACHE.keys().next().value!);
+  return fc;
 }

@@ -131,6 +131,18 @@ function PlancheCalibration({
   );
 }
 
+/** Expression MapLibre : famille de zone → couleur (légende et carte partagent FAMILLE_COLORS). */
+function familleColorExpr(
+  famille: maplibregl.ExpressionSpecification,
+): maplibregl.ExpressionSpecification {
+  return [
+    "match",
+    famille,
+    ...Object.entries(ZONE_COLORS).flat(),
+    AUTRE_COLOR, // familles non répertoriées (ZUG, RA, TVR…)
+  ] as maplibregl.ExpressionSpecification;
+}
+
 function Switch({
   checked,
   onChange,
@@ -323,23 +335,8 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           ?.classList.remove("maplibregl-compact-show");
       }
       try {
-        // 0. Planche PAU d'Aïn Chock — overlay raster
-        map.addSource("planche", {
-          type: "image",
-          url: "/data/ainchock/pau-planche.jpg",
-          coordinates: [
-            [bbox.W, bbox.N],
-            [bbox.E, bbox.N],
-            [bbox.E, bbox.S],
-            [bbox.W, bbox.S],
-          ],
-        });
-        map.addLayer({
-          id: "planche-layer",
-          type: "raster",
-          source: "planche",
-          paint: { "raster-opacity": 0, "raster-fade-duration": 0 },
-        });
+        // 0. Planche PAU d'Aïn Chock (1,9 Mo) : ajoutée seulement à la première
+        // activation du calque, cf. effet « Planche » plus bas.
 
         // 1. Périmètre administratif (OSM) — chargé en arrière-plan : ne bloque
         // plus la création des calques suivants (zonage, clics).
@@ -388,21 +385,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
 
         // L'attribut "famille" est calculé au fetch (cf. aucService.familleOf),
         // donc le match MapLibre est trivialement direct.
-        const aucColorExpr: maplibregl.ExpressionSpecification = [
-          "match",
-          ["coalesce", ["get", "famille"], "?"],
-          "A", ZONE_COLORS.A!,
-          "B", ZONE_COLORS.B!,
-          "C", ZONE_COLORS.C!,
-          "D", ZONE_COLORS.D!,
-          "E", ZONE_COLORS.E!,
-          "I", ZONE_COLORS.I!,
-          "PB", ZONE_COLORS.PB!,
-          "PU", ZONE_COLORS.PU!,
-          "S", ZONE_COLORS.S!,
-          "ZR", ZONE_COLORS.ZR!,
-          AUTRE_COLOR, // familles non répertoriées (ZUG, RA, TVR…)
-        ];
+        const aucColorExpr = familleColorExpr(["coalesce", ["get", "famille"], "?"]);
         map.addLayer({
           id: "auc-zonage-fill",
           type: "fill",
@@ -428,21 +411,7 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
           ["==", ["slice", ["get", "zone"], 0, 2], "ZR"], "ZR",
           ["slice", ["get", "zone"], 0, 1],
         ];
-        const matchExpr: maplibregl.ExpressionSpecification = [
-          "match",
-          familleExpr,
-          "A", ZONE_COLORS.A!,
-          "B", ZONE_COLORS.B!,
-          "C", ZONE_COLORS.C!,
-          "D", ZONE_COLORS.D!,
-          "E", ZONE_COLORS.E!,
-          "I", ZONE_COLORS.I!,
-          "PB", ZONE_COLORS.PB!,
-          "PU", ZONE_COLORS.PU!,
-          "S", ZONE_COLORS.S!,
-          "ZR", ZONE_COLORS.ZR!,
-          AUTRE_COLOR,
-        ];
+        const matchExpr = familleColorExpr(familleExpr);
         map.addLayer({
           id: "parcelles-fill",
           type: "fill",
@@ -590,11 +559,37 @@ export function MapView({ onParcelSelect, hasSelection }: Props) {
     src?.setData({ type: "FeatureCollection", features: [] });
   }, [hasSelection]);
 
-  // Opacité planche
+  // Planche : image chargée à la première activation (avant, 1,9 Mo
+  // téléchargés à chaque visite pour un calque masqué), puis opacité.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.getLayer("planche-layer")) return;
-    map.setPaintProperty("planche-layer", "raster-opacity", planche ? plancheOpacity : 0);
+    if (!map || !map.getLayer("buildings-fill")) return;
+    if (planche && !map.getSource("planche")) {
+      map.addSource("planche", {
+        type: "image",
+        url: "/data/ainchock/pau-planche.jpg",
+        coordinates: [
+          [bbox.W, bbox.N],
+          [bbox.E, bbox.N],
+          [bbox.E, bbox.S],
+          [bbox.W, bbox.S],
+        ],
+      });
+      map.addLayer(
+        {
+          id: "planche-layer",
+          type: "raster",
+          source: "planche",
+          paint: { "raster-opacity": 0, "raster-fade-duration": 0 },
+        },
+        map.getLayer("perimetre-line") ? "perimetre-line" : "buildings-fill",
+      );
+    }
+    if (map.getLayer("planche-layer")) {
+      map.setPaintProperty("planche-layer", "raster-opacity", planche ? plancheOpacity : 0);
+    }
+    // bbox : lu à la création seulement, ses changements passent par l'effet « Coins planche ».
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planche, plancheOpacity]);
 
   // Toggle bâtiments OSM : fetch paresseux + opacités.

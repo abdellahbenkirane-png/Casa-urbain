@@ -1,63 +1,70 @@
-import { z } from "zod";
+// Types d'entrée du moteur. Ce sont de simples types TypeScript : rien n'est
+// validé à l'exécution (zod n'était utilisé que pour en déduire les types et
+// alourdissait le calculateur de ~50 kB). Unités rappelées en commentaire.
 
-export const TerrainSchema = z.object({
-  surface: z.number().positive(),
-  prixTerrainDhParM2: z.number().nonnegative(),
-  nombreEtages: z.number().int().nonnegative(),
-  facade1: z.number().nonnegative().optional(),
-  facade2: z.number().nonnegative().optional(),
-  profondeur1: z.number().nonnegative().optional(),
-  profondeur2: z.number().nonnegative().optional(),
-  saillie: z.number().nonnegative().optional(),
-});
-export type Terrain = z.infer<typeof TerrainSchema>;
+export interface Terrain {
+  /** m² (> 0) */
+  surface: number;
+  /** DH/m² */
+  prixTerrainDhParM2: number;
+  /** étages au-dessus du RDC (entier ≥ 0) */
+  nombreEtages: number;
+  facade1?: number;
+  facade2?: number;
+  profondeur1?: number;
+  profondeur2?: number;
+  saillie?: number;
+}
 
-export const VenteLigneSchema = z.object({
-  libelle: z.string(),
-  prixTtcDhParM2: z.number().nonnegative(),
-  superficieVendable: z.number().nonnegative(),
-});
-export type VenteLigne = z.infer<typeof VenteLigneSchema>;
+export interface VenteLigne {
+  libelle: string;
+  /** DH TTC/m² */
+  prixTtcDhParM2: number;
+  /** m² */
+  superficieVendable: number;
+}
 
-export const ConstructionLigneSchema = z.object({
-  libelle: z.string(),
-  prixHtDhParM2: z.number().nonnegative(),
-  superficieConstruite: z.number().nonnegative(),
-});
-export type ConstructionLigne = z.infer<typeof ConstructionLigneSchema>;
+export interface ConstructionLigne {
+  libelle: string;
+  /** DH HT/m² */
+  prixHtDhParM2: number;
+  /** m² */
+  superficieConstruite: number;
+}
 
-export const HypothesesSchema = z.object({
-  tvaVente: z.number().min(0).max(1),
-  tvaConstruction: z.number().min(0).max(1),
-  tauxEnregistrement: z.number().min(0).max(1),
-  notaireForfait: z.number().nonnegative(),
-  tauxEtudes: z.number().min(0).max(1),
-  suiviChantierParMois: z.number().nonnegative(),
-  dureeChantierMois: z.number().int().nonnegative(),
-  fraisCommune: z.number().nonnegative(),
-  ascenseurTtc: z.number().nonnegative(),
-  amenagementsCommuns: z.number().nonnegative(),
-  amenagementsFacades: z.number().nonnegative(),
-  amenagementTemoin: z.number().nonnegative(),
-  tauxChargesFinancieres: z.number().min(0).max(1),
-  dureeProjetAnnees: z.number().positive(),
-  fraisOuvertureCompte: z.number().nonnegative(),
-  tauxHypotheque: z.number().min(0).max(1),
-  compteurGeneral: z.number().nonnegative(),
-  tauxEclatementTitres: z.number().min(0).max(1),
-  tauxImprevus: z.number().min(0).max(1),
-  tauxIs: z.number().min(0).max(1),
-});
-export type Hypotheses = z.infer<typeof HypothesesSchema>;
+/** Les taux sont des fractions (5 % → 0.05), les montants en DH. */
+export interface Hypotheses {
+  tvaVente: number;
+  tvaConstruction: number;
+  tauxEnregistrement: number;
+  notaireForfait: number;
+  tauxEtudes: number;
+  suiviChantierParMois: number;
+  /** mois (entier) */
+  dureeChantierMois: number;
+  fraisCommune: number;
+  ascenseurTtc: number;
+  amenagementsCommuns: number;
+  amenagementsFacades: number;
+  amenagementTemoin: number;
+  tauxChargesFinancieres: number;
+  /** années (> 0) */
+  dureeProjetAnnees: number;
+  fraisOuvertureCompte: number;
+  tauxHypotheque: number;
+  compteurGeneral: number;
+  tauxEclatementTitres: number;
+  tauxImprevus: number;
+  tauxIs: number;
+}
 
-export const SimulationInputSchema = z.object({
-  nom: z.string().default("Scénario"),
-  terrain: TerrainSchema,
-  ventes: z.array(VenteLigneSchema),
-  constructions: z.array(ConstructionLigneSchema),
-  hypotheses: HypothesesSchema,
-});
-export type SimulationInput = z.infer<typeof SimulationInputSchema>;
+export interface SimulationInput {
+  nom: string;
+  terrain: Terrain;
+  ventes: VenteLigne[];
+  constructions: ConstructionLigne[];
+  hypotheses: Hypotheses;
+}
 
 export interface SimulationOutput {
   ca: {

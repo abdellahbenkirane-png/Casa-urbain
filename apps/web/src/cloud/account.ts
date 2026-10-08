@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { cloudEnabled, getCloud } from "./firebase";
+import { cloudEnabled, getAuthClient } from "./firebase";
 
 export interface AccountUser {
   uid: string;
@@ -33,7 +33,7 @@ export const useAccount = create<AccountState>((set) => ({
     if (!cloudEnabled || started) return;
     started = true;
     void (async () => {
-      const { auth } = await getCloud();
+      const auth = await getAuthClient();
       const { onAuthStateChanged } = await import("firebase/auth");
       onAuthStateChanged(auth, (u) => {
         set({
@@ -51,7 +51,7 @@ export const useAccount = create<AccountState>((set) => ({
   async signIn() {
     set({ busy: true, error: null });
     try {
-      const { auth } = await getCloud();
+      const auth = await getAuthClient();
       const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
@@ -65,7 +65,7 @@ export const useAccount = create<AccountState>((set) => ({
   },
 
   async signOut() {
-    const { auth } = await getCloud();
+    const auth = await getAuthClient();
     const { signOut } = await import("firebase/auth");
     await signOut(auth);
   },

@@ -4,10 +4,10 @@
  * qu'à ses propres documents.
  */
 import type { StoredScenario } from "../scenarios/store";
-import { getCloud } from "./firebase";
+import { getDb } from "./firebase";
 
 const col = async (uid: string) => {
-  const { db } = await getCloud();
+  const db = await getDb();
   const { collection } = await import("firebase/firestore");
   return collection(db, "users", uid, "scenarios");
 };
@@ -45,7 +45,7 @@ export async function cloudDelete(uid: string, id: string): Promise<void> {
 
 /** Copie des scénarios dans le compte en une seule écriture groupée. */
 export async function cloudImport(uid: string, items: StoredScenario[]): Promise<void> {
-  const { db } = await getCloud();
+  const db = await getDb();
   const { doc, writeBatch } = await import("firebase/firestore");
   const c = await col(uid);
   // Firestore limite un lot à 500 écritures.
