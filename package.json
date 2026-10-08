@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "test": "npm --workspace @casa/core run test",
+    "test": "npm --workspaces --if-present run test",
     "dev": "npm --workspace @casa/web run dev",
     "build": "npm --workspaces --if-present run build"
   }

@@ -160,7 +160,11 @@ export async function fetchZonage(
   }
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`AUC HTTP ${res.status}`);
-  const fc = esriToGeojson((await res.json()) as EsriResponse);
+  const data = (await res.json()) as EsriResponse & { error?: unknown };
+  // Erreur ArcGIS déguisée en succès : on échoue (le carré sera retenté)
+  // plutôt que d'afficher et de garder en cache une zone vide.
+  if (!Array.isArray(data.features)) throw new Error("AUC : réponse sans zonage");
+  const fc = esriToGeojson(data);
   CACHE.set(url, fc);
   if (CACHE.size > CACHE_MAX) CACHE.delete(CACHE.keys().next().value!);
   return fc;

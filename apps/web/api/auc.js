@@ -32,19 +32,30 @@ export default async function handler(req, res) {
     });
     const body = await upstream.text();
 
+    // ArcGIS signale souvent ses erreurs en HTTP 200 avec un corps {"error": …}
+    // (ou répond 204 vide). Seule une vraie réponse avec des « features » est
+    // valable : sinon on renvoie 502 et rien n'est mis en cache — avant, une
+    // panne passagère vidait une zone de la carte pendant 24 h.
+    let valid = false;
+    try {
+      valid = upstream.ok && Array.isArray(JSON.parse(body).features);
+    } catch {
+      valid = false;
+    }
+
     res.setHeader("content-type", "application/json; charset=utf-8");
     res.setHeader("access-control-allow-origin", "*");
     // Le zonage change rarement et le client demande des carrés fixes : on
-    // garde chaque réponse 1 jour au CDN, resservie 7 jours pendant qu'elle se
-    // rafraîchit. Les erreurs ne sont pas mises en cache.
+    // garde chaque réponse valable 1 jour au CDN, resservie 7 jours pendant
+    // qu'elle se rafraîchit.
     res.setHeader(
       "cache-control",
-      upstream.ok
-        ? "public, s-maxage=86400, stale-while-revalidate=604800"
-        : "no-store",
+      valid ? "public, s-maxage=86400, stale-while-revalidate=604800" : "no-store",
     );
-    res.status(upstream.status).send(body);
+    if (valid) res.status(200).send(body);
+    else res.status(502).json({ error: "Réponse AUC invalide", status: upstream.status, body: body.slice(0, 300) });
   } catch (e) {
+    res.setHeader("cache-control", "no-store");
     res.status(502).json({
       error: "Upstream AUC fetch failed",
       message: String(e?.message ?? e),
