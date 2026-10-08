@@ -5,3 +5,5 @@ node_modules
 .vite
 coverage
 packages/core/test
+.env*
+!.env.example
