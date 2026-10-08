@@ -14,7 +14,7 @@ import { CostBreakdown, Metrics, Sensitivity, Verdict } from "./Results";
 import { exportScenarioPdf, exportScenarioXlsx } from "./exports";
 import { validate } from "./zoneValidation";
 import type { ParcelleProperties } from "../map/MapView";
-import { useAccount, useAuthModal } from "../cloud/account";
+import { useAccount } from "../cloud/account";
 import { cloudEnabled } from "../cloud/firebase";
 
 export function SimulatorPanel({
@@ -58,7 +58,7 @@ export function SimulatorPanel({
   // Connexion / déconnexion : les scénarios viennent d'un autre endroit
   // (compte ou appareil) → on recharge.
   const uid = useAccount((s) => s.user?.uid ?? null);
-  const showLogin = useAuthModal((s) => s.show);
+  const signIn = useAccount((s) => s.signIn);
   useEffect(() => {
     loadForParcelle(parcelle.id);
   }, [parcelle.id, loadForParcelle, uid]);
@@ -193,8 +193,8 @@ export function SimulatorPanel({
       {cloudEnabled && !uid && (
         <p className="save-hint">
           Vos scénarios sont gardés sur cet appareil.{" "}
-          <button className="link-btn" onClick={showLogin}>
-            Connectez-vous
+          <button className="link-btn" onClick={() => void signIn()}>
+            Connectez-vous avec Google
           </button>{" "}
           pour les retrouver sur tous vos appareils.
         </p>

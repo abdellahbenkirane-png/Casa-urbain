@@ -11,12 +11,14 @@ interface AccountState {
   /** false tant que Firebase n'a pas dit si une session existe déjà. */
   ready: boolean;
   user: AccountUser | null;
+  /** Connexion Google en cours (fenêtre ouverte). */
+  busy: boolean;
+  /** Dernière erreur de connexion, déjà traduite. */
+  error: string | null;
   init: () => void;
-  signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  clearError: () => void;
 }
 
 let started = false;
@@ -24,6 +26,8 @@ let started = false;
 export const useAccount = create<AccountState>((set) => ({
   ready: !cloudEnabled,
   user: null,
+  busy: false,
+  error: null,
 
   init() {
     if (!cloudEnabled || started) return;
@@ -43,28 +47,21 @@ export const useAccount = create<AccountState>((set) => ({
     });
   },
 
-  async signInWithGoogle() {
-    const { auth } = await getCloud();
-    const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-    await signInWithPopup(auth, new GoogleAuthProvider());
-  },
-
-  async signInWithEmail(email, password) {
-    const { auth } = await getCloud();
-    const { signInWithEmailAndPassword } = await import("firebase/auth");
-    await signInWithEmailAndPassword(auth, email.trim(), password);
-  },
-
-  async signUpWithEmail(email, password) {
-    const { auth } = await getCloud();
-    const { createUserWithEmailAndPassword } = await import("firebase/auth");
-    await createUserWithEmailAndPassword(auth, email.trim(), password);
-  },
-
-  async resetPassword(email) {
-    const { auth } = await getCloud();
-    const { sendPasswordResetEmail } = await import("firebase/auth");
-    await sendPasswordResetEmail(auth, email.trim());
+  // Connexion uniquement via Google : un clic, pas de mot de passe à gérer.
+  async signIn() {
+    set({ busy: true, error: null });
+    try {
+      const { auth } = await getCloud();
+      const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      const msg = authErrorMessage(e);
+      if (msg) set({ error: msg });
+    } finally {
+      set({ busy: false });
+    }
   },
 
   async signOut() {
@@ -72,37 +69,25 @@ export const useAccount = create<AccountState>((set) => ({
     const { signOut } = await import("firebase/auth");
     await signOut(auth);
   },
+
+  clearError: () => set({ error: null }),
 }));
 
-/** Messages d'erreur Firebase traduits pour l'utilisateur. */
-export function authErrorMessage(e: unknown): string {
+/** Message d'erreur affichable, ou null si l'utilisateur a simplement annulé. */
+function authErrorMessage(e: unknown): string | null {
   const code = (e as { code?: string })?.code ?? "";
+  if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return null;
   const messages: Record<string, string> = {
-    "auth/invalid-email": "Adresse e-mail invalide.",
-    "auth/invalid-credential": "E-mail ou mot de passe incorrect.",
-    "auth/wrong-password": "E-mail ou mot de passe incorrect.",
-    "auth/user-not-found": "Aucun compte avec cet e-mail.",
-    "auth/email-already-in-use": "Un compte existe déjà avec cet e-mail. Connectez-vous.",
-    "auth/weak-password": "Mot de passe trop court (6 caractères minimum).",
-    "auth/too-many-requests": "Trop de tentatives. Réessayez dans quelques minutes.",
-    "auth/popup-closed-by-user": "Fenêtre Google fermée avant la fin de la connexion.",
     "auth/popup-blocked": "Fenêtre bloquée par le navigateur : autorisez les pop-ups pour ce site.",
     "auth/network-request-failed": "Pas de connexion internet.",
+    "auth/too-many-requests": "Trop de tentatives. Réessayez dans quelques minutes.",
     "auth/unauthorized-domain": "Ce domaine n'est pas autorisé dans la configuration Firebase.",
+    "auth/operation-not-allowed": "La connexion Google n'est pas activée dans la console Firebase.",
+    "auth/configuration-not-found": "La connexion Google n'est pas activée dans la console Firebase.",
   };
   if (messages[code]) return messages[code]!;
-  // Erreurs de configuration du projet Firebase (cf. docs/comptes-firebase.md).
   if (code.startsWith("auth/api-key-not-valid") || code === "auth/invalid-api-key")
     return "Configuration Firebase invalide (clé API). Vérifiez les variables VITE_FIREBASE_….";
-  if (code === "auth/operation-not-allowed" || code === "auth/configuration-not-found")
-    return "Cette méthode de connexion n'est pas activée dans la console Firebase.";
   console.warn("[account] erreur non traduite", code, e);
-  return "Une erreur est survenue. Réessayez.";
+  return "La connexion a échoué. Réessayez.";
 }
-
-/** Ouverture de la fenêtre de connexion, depuis n'importe quel composant. */
-export const useAuthModal = create<{ open: boolean; show: () => void; hide: () => void }>((set) => ({
-  open: false,
-  show: () => set({ open: true }),
-  hide: () => set({ open: false }),
-}));

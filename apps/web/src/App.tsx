@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { MapView, type ParcelleProperties } from "./map/MapView";
 import { ZoneCard, ZoneBadge } from "./zoning/ZoneCard";
-import { AuthModal } from "./cloud/AuthModal";
 import { useAccount } from "./cloud/account";
 
 // Code-split : le simulateur est chargé seulement au 1er clic sur une parcelle.
@@ -154,7 +153,6 @@ export function App() {
           </>
         )}
       </aside>
-      <AuthModal />
     </div>
   );
 }

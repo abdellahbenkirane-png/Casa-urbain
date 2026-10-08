@@ -20,10 +20,10 @@ Coût : gratuit (plan **Spark** de Firebase, sans carte bancaire) — jusqu'à
 
 ## 2. Activer la connexion
 
-Menu **Build → Authentication → Commencer**, onglet **Sign-in method** :
-
-- **E-mail/Mot de passe** → Activer → Enregistrer.
-- **Google** → Activer → choisir l'e-mail d'assistance → Enregistrer.
+La connexion se fait uniquement avec un compte Google (pas de mot de passe à
+gérer). Menu **Build → Authentication → Commencer**, onglet
+**Sign-in method** : **Google** → Activer → choisir l'e-mail d'assistance →
+Enregistrer.
 
 Onglet **Settings → Domaines autorisés** : ajouter
 `casa-urbain-web.vercel.app` (`localhost` y est déjà).
@@ -51,8 +51,8 @@ Preview), puis redéployer.
 
 ## Données personnelles
 
-Le site conserve l'e-mail de l'utilisateur et ses scénarios. Au Maroc, cela
-relève de la loi 09-08 (CNDP) : la mention de confidentialité affichée dans
-la fenêtre de connexion couvre l'essentiel ; pour supprimer un compte, le
+Le site conserve l'e-mail Google de l'utilisateur et ses scénarios. Au Maroc,
+cela relève de la loi 09-08 (CNDP) : la mention de confidentialité (bouton de
+connexion, menu du compte) couvre l'essentiel ; pour supprimer un compte, le
 faire depuis *Authentication → Users* et supprimer ses documents dans
 *Firestore → users/{uid}*.
