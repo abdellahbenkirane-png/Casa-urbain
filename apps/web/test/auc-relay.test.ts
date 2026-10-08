@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import handler from "./auc.js";
+import handler from "../api/auc.js";
 
 function fakeRes() {
   const r = { statusCode: 0, headers: {} as Record<string, string>, body: "" as unknown };
